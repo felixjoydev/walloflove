@@ -1,0 +1,391 @@
+/* SignBoard Widget Styles — scoped via Shadow DOM */
+
+.sb-root {
+  font-family: var(--sb-font, system-ui, sans-serif);
+  color: var(--sb-text, #1a1a1a);
+  box-sizing: border-box;
+  position: relative;
+}
+
+.sb-root *, .sb-root *::before, .sb-root *::after {
+  box-sizing: border-box;
+}
+
+/* Skeleton */
+.sb-skeleton {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.sb-skeleton-card {
+  flex: 1;
+  height: 120px;
+  border-radius: var(--sb-card-radius, 12px);
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: sb-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes sb-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Wall */
+.sb-wall {
+  position: relative;
+  width: 100%;
+  padding: 8px 0;
+}
+
+/* Empty state */
+.sb-empty {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.sb-empty-text {
+  font-size: 18px;
+  color: var(--sb-text, #1a1a1a);
+  opacity: 0.6;
+  margin: 0;
+}
+
+/* Entry card */
+.sb-card {
+  position: relative;
+  background: var(--sb-card-bg, #ffffff);
+  border-radius: var(--sb-card-radius, 12px);
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: opacity 0.3s ease;
+  animation: sb-fadeIn 0.4s ease;
+}
+
+@keyframes sb-fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sb-card-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+}
+
+.sb-card-name {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sb-card-message {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.sb-card-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--sb-accent, #6366f1);
+  text-decoration: none;
+}
+
+.sb-link-icon {
+  font-size: 14px;
+}
+
+.sb-overflow {
+  text-align: center;
+  padding: 16px;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.sb-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+/* CTA button */
+.sb-cta {
+  display: block;
+  margin: 16px auto;
+  padding: 12px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--sb-font, system-ui, sans-serif);
+  color: #ffffff;
+  background: var(--sb-accent, #6366f1);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sb-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.sb-cta:active {
+  transform: translateY(0);
+}
+
+/* Modal */
+.sb-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.sb-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.sb-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-modal-close:hover {
+  background: #f3f4f6;
+}
+
+.sb-modal-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Canvas */
+.sb-canvas-area {
+  position: relative;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.sb-canvas {
+  display: block;
+  cursor: crosshair;
+  width: 100%;
+  height: auto;
+}
+
+.sb-canvas-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sb-canvas-preview svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Toolbar */
+.sb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  align-items: center;
+}
+
+.sb-color-row {
+  display: flex;
+  gap: 4px;
+}
+
+.sb-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s;
+}
+
+.sb-color-btn.sb-active {
+  border-color: var(--sb-accent, #6366f1);
+}
+
+.sb-size-row {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.sb-size-btn,
+.sb-action-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sb-size-btn.sb-active {
+  background: var(--sb-accent, #6366f1);
+  color: #ffffff;
+  border-color: var(--sb-accent, #6366f1);
+}
+
+.sb-action-row {
+  display: flex;
+  gap: 4px;
+}
+
+.sb-action-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Form */
+.sb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sb-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-label {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sb-input {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+}
+
+.sb-input:focus {
+  border-color: var(--sb-accent, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+}
+
+.sb-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 0;
+}
+
+.sb-submit {
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--sb-accent, #6366f1);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.sb-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sb-submit:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+/* Success */
+.sb-success {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.sb-success-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #16a34a;
+  margin: 0;
+}
+
+/* Branding */
+.sb-branding {
+  text-align: center;
+  padding: 12px 0 4px;
+  font-size: 11px;
+  color: #a3a3a3;
+}
+
+.sb-branding a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sb-branding a:hover {
+  color: #737373;
+  text-decoration: underline;
+}
+
+/* Self-deletion */
+.sb-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: #a3a3a3;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sb-card:hover .sb-remove-btn {
+  opacity: 1;
+}
+
+.sb-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
