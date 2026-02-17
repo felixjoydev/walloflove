@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { listApprovedEntries, createEntry } from "@/lib/repositories/entry.repo";
+import {
+  listApprovedEntries,
+  createEntry,
+  countEntries,
+} from "@/lib/repositories/entry.repo";
 import { getEntrySubmitLimiter, getApiReadLimiter } from "@/lib/utils/rate-limit";
 import { visitorHash } from "@/lib/utils/hash";
 import {
@@ -11,6 +16,11 @@ import {
 import { mergeSettings } from "@shared/types";
 import type { GuestbookSettings } from "@shared/types";
 import type { Json } from "@shared/types/database";
+import {
+  getSubscription,
+  getUserPlan,
+} from "@/lib/repositories/subscription.repo";
+import { getEntryLimit, PLANS } from "@/lib/stripe/config";
 
 function corsHeaders() {
   return {
@@ -18,6 +28,19 @@ function corsHeaders() {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, If-None-Match",
   };
+}
+
+function generateEntriesEtag(result: {
+  cursor: string | null;
+  entries: Array<{ id: string; created_at: string }>;
+}): string {
+  const payload = JSON.stringify({
+    cursor: result.cursor,
+    entries: result.entries.map((entry) => [entry.id, entry.created_at]),
+  });
+
+  const digest = createHash("sha1").update(payload).digest("hex");
+  return `"${digest}"`;
 }
 
 export async function OPTIONS() {
@@ -46,10 +69,7 @@ export async function GET(
   try {
     const result = await listApprovedEntries(supabaseAdmin, id, cursor, 20);
 
-    // Generate ETag from the first entry's created_at (or empty hash)
-    const etag = result.entries.length > 0
-      ? `"${result.entries[0].created_at}"`
-      : '"empty"';
+    const etag = generateEntriesEtag(result);
 
     const ifNoneMatch = request.headers.get("If-None-Match");
     if (ifNoneMatch === etag) {
@@ -83,7 +103,7 @@ export async function POST(
   // Verify guestbook exists and get settings
   const { data: guestbook } = await supabaseAdmin
     .from("guestbooks")
-    .select("id, settings")
+    .select("id, user_id, settings")
     .eq("id", guestbookId)
     .single();
 
@@ -97,6 +117,20 @@ export async function POST(
   const settings = mergeSettings(
     guestbook.settings as Partial<GuestbookSettings> | null
   );
+
+  // Enforce plan entry limits for the guestbook owner
+  const subscription = await getSubscription(supabaseAdmin, guestbook.user_id);
+  const plan = getUserPlan(subscription);
+  const entryLimit = getEntryLimit(plan);
+  if (Number.isFinite(entryLimit)) {
+    const entryCount = await countEntries(supabaseAdmin, guestbookId);
+    if (entryCount >= entryLimit) {
+      return NextResponse.json(
+        { error: "Entry limit reached for this guestbook" },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
+  }
 
   // Get visitor IP for rate limiting
   const { headers: getHeaders } = await import("next/headers");
@@ -176,8 +210,10 @@ export async function POST(
   }
 
   // Determine status based on moderation mode
-  const status =
-    settings.moderation_mode === "auto_approve" ? "approved" : "pending";
+  const moderationMode = PLANS[plan].moderation
+    ? settings.moderation_mode
+    : "auto_approve";
+  const status = moderationMode === "auto_approve" ? "approved" : "pending";
 
   try {
     const entry = await createEntry(supabaseAdmin, {

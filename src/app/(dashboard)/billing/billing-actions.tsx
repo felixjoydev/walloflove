@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import type { PlanName } from "@shared/types";
 
 export function BillingActions({
   action,
-  priceId,
+  plan,
   className,
   children,
 }: {
   action: "checkout" | "portal";
-  priceId?: string;
+  plan?: Extract<PlanName, "starter" | "pro">;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -23,8 +24,8 @@ export function BillingActions({
         action === "checkout" ? "/api/billing/checkout" : "/api/billing/portal";
 
       const body =
-        action === "checkout" && priceId
-          ? JSON.stringify({ priceId })
+        action === "checkout" && plan
+          ? JSON.stringify({ plan })
           : "{}";
 
       const res = await fetch(endpoint, {

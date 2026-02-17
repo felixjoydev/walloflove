@@ -7,13 +7,16 @@ import {
 } from "@/lib/repositories/subscription.repo";
 import type Stripe from "stripe";
 
-const PRICE_TO_PLAN: Record<string, "starter" | "pro"> = {
-  [process.env.STRIPE_STARTER_PRICE_ID!]: "starter",
-  [process.env.STRIPE_PRO_PRICE_ID!]: "pro",
-};
+const PRICE_TO_PLAN = new Map<string, "starter" | "pro">();
+if (process.env.STRIPE_STARTER_PRICE_ID) {
+  PRICE_TO_PLAN.set(process.env.STRIPE_STARTER_PRICE_ID, "starter");
+}
+if (process.env.STRIPE_PRO_PRICE_ID) {
+  PRICE_TO_PLAN.set(process.env.STRIPE_PRO_PRICE_ID, "pro");
+}
 
-function planFromPriceId(priceId: string): "starter" | "pro" {
-  return PRICE_TO_PLAN[priceId] ?? "starter";
+function planFromPriceId(priceId: string): "starter" | "pro" | null {
+  return PRICE_TO_PLAN.get(priceId) ?? null;
 }
 
 export async function POST(request: NextRequest) {
@@ -62,12 +65,17 @@ export async function POST(request: NextRequest) {
 
         const priceId = sub.items.data[0]?.price.id ?? "";
 
+        const plan = planFromPriceId(priceId);
+        if (!plan) {
+          throw new Error(`Unknown Stripe price ID: ${priceId}`);
+        }
+
         await upsertSubscription(supabaseAdmin, {
           user_id: userId,
           stripe_customer_id:
             typeof sub.customer === "string" ? sub.customer : sub.customer.id,
           stripe_subscription_id: sub.id,
-          plan: planFromPriceId(priceId),
+          plan,
           status: sub.status === "active" ? "active" : "past_due",
           current_period_end: new Date(
             sub.current_period_end * 1000
@@ -84,12 +92,17 @@ export async function POST(request: NextRequest) {
 
         const priceId = sub.items.data[0]?.price.id ?? "";
 
+        const plan = planFromPriceId(priceId);
+        if (!plan) {
+          throw new Error(`Unknown Stripe price ID: ${priceId}`);
+        }
+
         await upsertSubscription(supabaseAdmin, {
           user_id: userId,
           stripe_customer_id:
             typeof sub.customer === "string" ? sub.customer : sub.customer.id,
           stripe_subscription_id: sub.id,
-          plan: planFromPriceId(priceId),
+          plan,
           status: sub.status === "active" ? "active" : sub.status === "past_due" ? "past_due" : "canceled",
           current_period_end: new Date(
             sub.current_period_end * 1000

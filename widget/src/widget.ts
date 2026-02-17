@@ -384,4 +384,18 @@ const mutationObserver = new MutationObserver((mutations) => {
     }
   }
 });
-mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+let mutationObserverStarted = false;
+function startMutationObserver() {
+  if (mutationObserverStarted || !document.body) return;
+  mutationObserverStarted = true;
+  mutationObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+if (document.body) {
+  startMutationObserver();
+} else {
+  document.addEventListener("DOMContentLoaded", startMutationObserver, {
+    once: true,
+  });
+}

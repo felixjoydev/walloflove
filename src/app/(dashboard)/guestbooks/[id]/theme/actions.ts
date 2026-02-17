@@ -6,6 +6,11 @@ import {
   getGuestbook,
   updateGuestbookSettings,
 } from "@/lib/repositories/guestbook.repo";
+import {
+  getSubscription,
+  getUserPlan,
+} from "@/lib/repositories/subscription.repo";
+import { PLANS } from "@/lib/stripe/config";
 import type { GuestbookSettings } from "@shared/types";
 
 export async function saveThemeAction(
@@ -24,6 +29,12 @@ export async function saveThemeAction(
   }
 
   try {
+    const subscription = await getSubscription(supabase, user.id);
+    const plan = getUserPlan(subscription);
+    if (!PLANS[plan].fullTheme) {
+      return { error: "Theme customization requires a paid plan" };
+    }
+
     await updateGuestbookSettings(supabase, guestbookId, theme);
     return { error: null };
   } catch (err) {

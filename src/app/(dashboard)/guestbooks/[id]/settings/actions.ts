@@ -7,6 +7,11 @@ import {
   updateGuestbookSettings,
   updateGuestbookName,
 } from "@/lib/repositories/guestbook.repo";
+import {
+  getSubscription,
+  getUserPlan,
+} from "@/lib/repositories/subscription.repo";
+import { PLANS } from "@/lib/stripe/config";
 import type { GuestbookSettings } from "@shared/types";
 
 export async function saveSettingsAction(
@@ -25,6 +30,15 @@ export async function saveSettingsAction(
   }
 
   try {
+    const subscription = await getSubscription(supabase, user.id);
+    const plan = getUserPlan(subscription);
+    if (
+      settings.moderation_mode === "manual_approve" &&
+      !PLANS[plan].moderation
+    ) {
+      return { error: "Manual moderation requires a paid plan" };
+    }
+
     await updateGuestbookSettings(supabase, guestbookId, settings);
     return { error: null };
   } catch (err) {

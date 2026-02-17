@@ -4,7 +4,7 @@ import {
   getSubscription,
   getUserPlan,
 } from "@/lib/repositories/subscription.repo";
-import { PLANS, getPriceId } from "@/lib/stripe/config";
+import { PLANS } from "@/lib/stripe/config";
 import type { PlanName } from "@shared/types";
 import { BillingActions } from "./billing-actions";
 
@@ -146,7 +146,7 @@ export default async function BillingPage() {
                 ) : (
                   <BillingActions
                     action="checkout"
-                    priceId={getPriceId(plan) ?? undefined}
+                    plan={plan}
                     className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
                   >
                     {currentPlan === "free" ? "Upgrade" : "Change plan"}

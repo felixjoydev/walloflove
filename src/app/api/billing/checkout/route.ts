@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe/client";
 import { getSubscription } from "@/lib/repositories/subscription.repo";
+import { getPriceId } from "@/lib/stripe/config";
+import type { PlanName } from "@shared/types";
+
+type CheckoutBody = {
+  plan: Extract<PlanName, "starter" | "pro">;
+};
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -13,17 +19,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { priceId: string };
+  let body: CheckoutBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.priceId || typeof body.priceId !== "string") {
+  if (body.plan !== "starter" && body.plan !== "pro") {
     return NextResponse.json(
-      { error: "priceId is required" },
+      { error: "plan must be starter or pro" },
       { status: 400 }
+    );
+  }
+
+  const priceId = getPriceId(body.plan);
+  if (!priceId) {
+    return NextResponse.json(
+      { error: "Billing configuration is incomplete" },
+      { status: 500 }
     );
   }
 
@@ -42,7 +56,7 @@ export async function POST(request: NextRequest) {
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
-    line_items: [{ price: body.priceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${request.nextUrl.origin}/billing?success=true`,
     cancel_url: `${request.nextUrl.origin}/billing?canceled=true`,
     subscription_data: {

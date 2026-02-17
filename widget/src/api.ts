@@ -17,6 +17,23 @@ export function setBaseUrl(url: string) {
 }
 
 const etagCache = new Map<string, string>();
+const responseCache = new Map<string, unknown>();
+
+function invalidateEntriesCache(guestbookId: string) {
+  const pathPrefix = `/api/v1/guestbooks/${guestbookId}/entries`;
+
+  for (const key of Array.from(etagCache.keys())) {
+    if (key.startsWith(pathPrefix)) {
+      etagCache.delete(key);
+    }
+  }
+
+  for (const key of Array.from(responseCache.keys())) {
+    if (key.startsWith(pathPrefix)) {
+      responseCache.delete(key);
+    }
+  }
+}
 
 async function request<T>(
   path: string,
@@ -36,6 +53,9 @@ async function request<T>(
     const res = await fetch(url, { ...options, headers: { ...headers, ...options?.headers } });
 
     if (res.status === 304) {
+      if (responseCache.has(path)) {
+        return { ok: true, data: responseCache.get(path) as T };
+      }
       return { ok: true, data: null as unknown as T };
     }
 
@@ -50,6 +70,9 @@ async function request<T>(
     }
 
     const data = (await res.json()) as T;
+    if (options?.useEtag) {
+      responseCache.set(path, data);
+    }
     return { ok: true, data };
   } catch {
     return { ok: false, error: { error: "Network error" } };
@@ -80,7 +103,12 @@ export function submitEntry(
   return request<SubmitEntryResponse>(
     `/api/v1/guestbooks/${guestbookId}/entries`,
     { method: "POST", body: JSON.stringify(data) }
-  );
+  ).then((result) => {
+    if (result.ok) {
+      invalidateEntriesCache(guestbookId);
+    }
+    return result;
+  });
 }
 
 export function deleteEntry(
@@ -91,5 +119,10 @@ export function deleteEntry(
   return request<{ success: boolean }>(
     `/api/v1/guestbooks/${guestbookId}/entries/${entryId}`,
     { method: "DELETE", body: JSON.stringify({ deletion_token: token }) }
-  );
+  ).then((result) => {
+    if (result.ok) {
+      invalidateEntriesCache(guestbookId);
+    }
+    return result;
+  });
 }

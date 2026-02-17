@@ -102,12 +102,14 @@ export async function deleteEntry(
 
 export async function deleteEntryByToken(
   supabase: TypedSupabaseClient,
+  guestbookId: string,
   entryId: string,
   deletionToken: string
 ) {
   const { data, error } = await supabase
     .from("entries")
     .delete()
+    .eq("guestbook_id", guestbookId)
     .eq("id", entryId)
     .eq("deletion_token", deletionToken)
     .select("id")

@@ -18,7 +18,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; entryId: string }> }
 ) {
-  const { entryId } = await params;
+  const { id: guestbookId, entryId } = await params;
 
   let body: { deletion_token?: string };
   try {
@@ -40,6 +40,7 @@ export async function DELETE(
   try {
     const deleted = await deleteEntryByToken(
       supabaseAdmin,
+      guestbookId,
       entryId,
       body.deletion_token
     );

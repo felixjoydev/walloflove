@@ -8,6 +8,11 @@ import {
   deleteEntry,
 } from "@/lib/repositories/entry.repo";
 import { getGuestbook } from "@/lib/repositories/guestbook.repo";
+import {
+  getSubscription,
+  getUserPlan,
+} from "@/lib/repositories/subscription.repo";
+import { PLANS } from "@/lib/stripe/config";
 import type { EntryStatus } from "@shared/types";
 
 async function getAuthedGuestbook(guestbookId: string) {
@@ -19,9 +24,12 @@ async function getAuthedGuestbook(guestbookId: string) {
 
   const guestbook = await getGuestbook(supabase, guestbookId);
   if (!guestbook || guestbook.user_id !== user.id) {
-    return { supabase, error: "Not found" as const };
+    return { supabase, error: "Not found" as const, canModerate: false };
   }
-  return { supabase, error: null };
+
+  const subscription = await getSubscription(supabase, user.id);
+  const plan = getUserPlan(subscription);
+  return { supabase, error: null, canModerate: PLANS[plan].moderation };
 }
 
 export async function updateEntryStatusAction(
@@ -29,8 +37,9 @@ export async function updateEntryStatusAction(
   entryId: string,
   status: EntryStatus
 ) {
-  const { supabase, error } = await getAuthedGuestbook(guestbookId);
+  const { supabase, error, canModerate } = await getAuthedGuestbook(guestbookId);
   if (error) return { error };
+  if (!canModerate) return { error: "Moderation requires a paid plan" };
 
   try {
     await updateEntryStatus(supabase, entryId, status);
@@ -45,8 +54,9 @@ export async function bulkUpdateAction(
   entryIds: string[],
   status: EntryStatus
 ) {
-  const { supabase, error } = await getAuthedGuestbook(guestbookId);
+  const { supabase, error, canModerate } = await getAuthedGuestbook(guestbookId);
   if (error) return { error };
+  if (!canModerate) return { error: "Moderation requires a paid plan" };
 
   try {
     await bulkUpdateEntryStatus(supabase, entryIds, status);
@@ -60,8 +70,9 @@ export async function deleteEntryAction(
   guestbookId: string,
   entryId: string
 ) {
-  const { supabase, error } = await getAuthedGuestbook(guestbookId);
+  const { supabase, error, canModerate } = await getAuthedGuestbook(guestbookId);
   if (error) return { error };
+  if (!canModerate) return { error: "Moderation requires a paid plan" };
 
   try {
     await deleteEntry(supabase, entryId);
