@@ -29,6 +29,6 @@ export const stripe = new Proxy({} as Stripe, {
     if (!client) {
       throw new Error("Stripe is not configured. Set STRIPE_SECRET_KEY env var.");
     }
-    return (client as Record<string | symbol, unknown>)[prop];
+    return (client as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
