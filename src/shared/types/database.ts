@@ -17,6 +17,7 @@ export interface Database {
           id: string;
           user_id: string;
           name: string;
+          slug: string | null;
           settings: Json;
           created_at: string;
           updated_at: string;
@@ -25,6 +26,7 @@ export interface Database {
           id?: string;
           user_id: string;
           name: string;
+          slug?: string | null;
           settings?: Json;
           created_at?: string;
           updated_at?: string;
@@ -33,6 +35,7 @@ export interface Database {
           id?: string;
           user_id?: string;
           name?: string;
+          slug?: string | null;
           settings?: Json;
           created_at?: string;
           updated_at?: string;
@@ -87,6 +90,50 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: "entries_guestbook_id_fkey";
+            columns: ["guestbook_id"];
+            isOneToOne: false;
+            referencedRelation: "guestbooks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      analytics_events: {
+        Row: {
+          id: string;
+          guestbook_id: string;
+          event_type: string;
+          page_type: string;
+          visitor_hash: string | null;
+          country: string | null;
+          referrer: string | null;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          guestbook_id: string;
+          event_type: string;
+          page_type: string;
+          visitor_hash?: string | null;
+          country?: string | null;
+          referrer?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          guestbook_id?: string;
+          event_type?: string;
+          page_type?: string;
+          visitor_hash?: string | null;
+          country?: string | null;
+          referrer?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_guestbook_id_fkey";
             columns: ["guestbook_id"];
             isOneToOne: false;
             referencedRelation: "guestbooks";

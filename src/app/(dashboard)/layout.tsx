@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Sidebar } from "@/components/ui/sidebar";
+import { listGuestbooks } from "@/lib/repositories/guestbook.repo";
+import { TopNavbar } from "@/components/ui/top-navbar";
+import { IconSidebar } from "@/components/ui/icon-sidebar";
 
 export default async function DashboardLayout({
   children,
@@ -16,10 +18,18 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const guestbooks = await listGuestbooks(supabase, user.id);
+  const guestbookList = guestbooks.map((g) => ({ id: g.id, name: g.name }));
+
   return (
-    <div className="flex min-h-screen">
-      <Sidebar userEmail={user.email ?? ""} />
-      <main className="flex-1 px-6 py-8 lg:px-10">{children}</main>
+    <div className="flex h-screen flex-col">
+      <TopNavbar guestbooks={guestbookList} userEmail={user.email ?? ""} />
+      <div className="flex flex-1 overflow-hidden">
+        <IconSidebar />
+        <main className="flex-1 overflow-y-auto px-6 py-8 lg:px-10">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
