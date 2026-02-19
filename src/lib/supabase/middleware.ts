@@ -35,6 +35,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Public pages (no auth required)
+  const isPublicRoute =
+    request.nextUrl.pathname.startsWith("/wall") ||
+    request.nextUrl.pathname.startsWith("/collect");
+
+  if (isPublicRoute) return supabaseResponse;
+
   // Protect dashboard routes
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith("/guestbooks") ||

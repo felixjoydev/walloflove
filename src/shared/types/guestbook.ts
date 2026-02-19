@@ -11,6 +11,15 @@ export interface GuestbookSettings {
   max_entries_displayed?: number;
   show_link_field?: boolean;
   show_message_field?: boolean;
+  logo_url?: string | null;
+  brand_color?: string;
+  wall_title?: string;
+  wall_description?: string;
+  collection_title?: string;
+  collection_description?: string;
+  widget_title?: string;
+  widget_description?: string;
+  wall_layout?: "grid" | "masonry";
 }
 
 export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
@@ -26,6 +35,15 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   max_entries_displayed: 50,
   show_link_field: true,
   show_message_field: true,
+  logo_url: null,
+  brand_color: "#6366f1",
+  wall_title: "Wall of Love",
+  wall_description: "See what people are saying",
+  collection_title: "Sign our Guestbook",
+  collection_description: "Leave your mark with a signature",
+  widget_title: "Guestbook",
+  widget_description: "",
+  wall_layout: "masonry",
 } as const;
 
 export function mergeSettings(

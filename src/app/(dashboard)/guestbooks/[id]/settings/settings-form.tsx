@@ -2,43 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
+import { useGuestbookContext } from "@/components/providers/guestbook-provider";
 import type { GuestbookSettings } from "@shared/types";
-import { saveSettingsAction, renameGuestbookAction } from "./actions";
+import { saveSettingsAction, renameGuestbookAction, updateSlugAction } from "./actions";
+import { deleteGuestbookAction } from "@/components/guestbook/delete-guestbook-action";
 
 type ModerationMode = NonNullable<GuestbookSettings["moderation_mode"]>;
 
-export function SettingsForm({
-  guestbookId,
-  guestbookName,
-  initialSettings,
-}: {
-  guestbookId: string;
-  guestbookName: string;
-  initialSettings: Required<GuestbookSettings>;
-}) {
+export function SettingsForm() {
   const router = useRouter();
-  const [name, setName] = useState(guestbookName);
-  const [settings, setSettings] =
-    useState<Required<GuestbookSettings>>(initialSettings);
-  const [saving, setSaving] = useState(false);
+  const guestbook = useGuestbookContext();
 
-  function update<K extends keyof GuestbookSettings>(
-    key: K,
-    value: GuestbookSettings[K]
-  ) {
+  const [name, setName] = useState(guestbook.name);
+  const [slug, setSlug] = useState(guestbook.slug ?? "");
+  const [settings, setSettings] = useState<Required<GuestbookSettings>>(guestbook.settings);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  function update<K extends keyof GuestbookSettings>(key: K, value: GuestbookSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleSave() {
     setSaving(true);
 
-    // Save name if changed
-    if (name.trim() && name.trim() !== guestbookName) {
-      const nameResult = await renameGuestbookAction(
-        guestbookId,
-        name.trim()
-      );
+    if (name.trim() && name.trim() !== guestbook.name) {
+      const nameResult = await renameGuestbookAction(guestbook.id, name.trim());
       if (nameResult.error) {
         toast.error(nameResult.error);
         setSaving(false);
@@ -46,8 +37,16 @@ export function SettingsForm({
       }
     }
 
-    // Save settings
-    const result = await saveSettingsAction(guestbookId, {
+    if (slug && slug !== guestbook.slug) {
+      const slugResult = await updateSlugAction(guestbook.id, slug);
+      if (slugResult.error) {
+        toast.error(slugResult.error);
+        setSaving(false);
+        return;
+      }
+    }
+
+    const result = await saveSettingsAction(guestbook.id, {
       moderation_mode: settings.moderation_mode,
       cta_text: settings.cta_text,
       max_entries_displayed: settings.max_entries_displayed,
@@ -58,6 +57,20 @@ export function SettingsForm({
     if (result.error) toast.error(result.error);
     else toast.success("Settings saved");
     setSaving(false);
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to delete this guestbook? This action cannot be undone.")) return;
+    setDeleting(true);
+    const result = await deleteGuestbookAction(guestbook.id);
+    if (result.error) {
+      toast.error(result.error);
+      setDeleting(false);
+      return;
+    }
+    toast.success("Guestbook deleted");
+    router.push("/guestbooks");
     router.refresh();
   }
 
@@ -74,11 +87,27 @@ export function SettingsForm({
         />
       </div>
 
+      {/* Slug / URL */}
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium">Public URL slug</label>
+        <div className="flex items-center gap-1 text-sm text-neutral-500">
+          <span>/wall/</span>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+            placeholder="my-guestbook"
+          />
+        </div>
+        <p className="text-xs text-neutral-400">
+          Used for public wall and collection URLs.
+        </p>
+      </div>
+
       {/* CTA text */}
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium">
-          Button text (CTA)
-        </label>
+        <label className="block text-sm font-medium">Button text (CTA)</label>
         <input
           type="text"
           value={settings.cta_text}
@@ -86,16 +115,11 @@ export function SettingsForm({
           maxLength={50}
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
         />
-        <p className="text-xs text-neutral-400">
-          Text shown on the &quot;Sign the Guestbook&quot; button.
-        </p>
       </div>
 
       {/* Moderation mode */}
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium">
-          Moderation mode
-        </label>
+        <label className="block text-sm font-medium">Moderation mode</label>
         <div className="flex gap-4">
           {(
             [
@@ -103,39 +127,26 @@ export function SettingsForm({
               { label: "Manual review", value: "manual_approve" },
             ] as const
           ).map((opt) => (
-            <label
-              key={opt.value}
-              className="flex cursor-pointer items-center gap-2 text-sm"
-            >
+            <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="radio"
                 name="moderation"
                 checked={settings.moderation_mode === opt.value}
-                onChange={() =>
-                  update("moderation_mode", opt.value as ModerationMode)
-                }
+                onChange={() => update("moderation_mode", opt.value as ModerationMode)}
                 className="accent-neutral-900"
               />
               {opt.label}
             </label>
           ))}
         </div>
-        <p className="text-xs text-neutral-400">
-          Auto-approve shows entries immediately. Manual requires your
-          approval first.
-        </p>
       </div>
 
-      {/* Max entries displayed */}
+      {/* Max entries */}
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium">
-          Max entries displayed
-        </label>
+        <label className="block text-sm font-medium">Max entries displayed</label>
         <select
           value={settings.max_entries_displayed}
-          onChange={(e) =>
-            update("max_entries_displayed", Number(e.target.value))
-          }
+          onChange={(e) => update("max_entries_displayed", Number(e.target.value))}
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
         >
           <option value={25}>25</option>
@@ -145,60 +156,20 @@ export function SettingsForm({
       </div>
 
       {/* Toggle: show message field */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">Show message field</p>
-          <p className="text-xs text-neutral-400">
-            Let visitors add a short message with their drawing.
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings.show_message_field}
-          onClick={() =>
-            update("show_message_field", !settings.show_message_field)
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            settings.show_message_field ? "bg-neutral-900" : "bg-neutral-300"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-              settings.show_message_field
-                ? "translate-x-6"
-                : "translate-x-1"
-            }`}
-          />
-        </button>
-      </div>
+      <ToggleSetting
+        label="Show message field"
+        description="Let visitors add a short message with their drawing."
+        checked={settings.show_message_field}
+        onChange={() => update("show_message_field", !settings.show_message_field)}
+      />
 
       {/* Toggle: show link field */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">Show link field</p>
-          <p className="text-xs text-neutral-400">
-            Let visitors include a link (HTTPS only).
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings.show_link_field}
-          onClick={() =>
-            update("show_link_field", !settings.show_link_field)
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            settings.show_link_field ? "bg-neutral-900" : "bg-neutral-300"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-              settings.show_link_field ? "translate-x-6" : "translate-x-1"
-            }`}
-          />
-        </button>
-      </div>
+      <ToggleSetting
+        label="Show link field"
+        description="Let visitors include a link (HTTPS only)."
+        checked={settings.show_link_field}
+        onChange={() => update("show_link_field", !settings.show_link_field)}
+      />
 
       {/* Save */}
       <button
@@ -207,6 +178,69 @@ export function SettingsForm({
         className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
       >
         {saving ? "Saving..." : "Save settings"}
+      </button>
+
+      {/* Billing section */}
+      <div className="border-t border-neutral-200 pt-6">
+        <h2 className="text-lg font-semibold">Billing</h2>
+        <p className="mt-1 text-sm text-neutral-500">Manage your subscription and plan.</p>
+        <Link
+          href="/billing"
+          className="mt-3 inline-block rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
+        >
+          Manage billing
+        </Link>
+      </div>
+
+      {/* Danger zone */}
+      <div className="border-t border-red-200 pt-6">
+        <h2 className="text-lg font-semibold text-red-600">Danger zone</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Permanently delete this guestbook and all its entries.
+        </p>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="mt-3 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        >
+          {deleting ? "Deleting..." : "Delete guestbook"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ToggleSetting({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-neutral-400">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onChange}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          checked ? "bg-neutral-900" : "bg-neutral-300"
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
       </button>
     </div>
   );

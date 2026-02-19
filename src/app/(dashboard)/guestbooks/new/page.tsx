@@ -24,8 +24,7 @@ export default function NewGuestbookPage() {
     }
 
     toast.success("Guestbook created!");
-    router.push(`/guestbooks/${result.id}`);
-    router.refresh();
+    router.push(`/guestbooks/${result.id}/inbox`);
   }
 
   return (
