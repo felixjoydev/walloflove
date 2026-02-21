@@ -43,6 +43,8 @@ export function validateStrokeData(data: unknown): data is DrawingData {
     if (!Array.isArray(stroke.points)) return false;
     if (typeof stroke.color !== "string") return false;
     if (typeof stroke.size !== "number") return false;
+    if (stroke.tool !== undefined && !["pencil", "marker", "eraser"].includes(stroke.tool)) return false;
+    if (stroke.opacity !== undefined && (typeof stroke.opacity !== "number" || stroke.opacity < 0 || stroke.opacity > 1)) return false;
 
     totalPoints += stroke.points.length;
     if (totalPoints > MAX_POINTS_TOTAL) return false;

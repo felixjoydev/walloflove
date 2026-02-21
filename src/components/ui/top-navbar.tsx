@@ -15,12 +15,16 @@ export function TopNavbar({
   userEmail: string;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4">
-      <Link href="/guestbooks" className="text-lg font-bold">
-        SignBoard
-      </Link>
-      <GuestbookSwitcher guestbooks={guestbooks} />
-      <ProfileDropdown email={userEmail} />
+    <header className="shrink-0 bg-bg-page">
+      <div className="mx-auto flex h-[72px] max-w-[720px] items-center justify-between px-6">
+        <div className="flex items-center gap-[16px]">
+          <Link href="/guestbooks" className="shrink-0">
+            <img src="/logo.svg" alt="Walloflove" className="h-[40px] w-[52px]" />
+          </Link>
+          <GuestbookSwitcher guestbooks={guestbooks} />
+        </div>
+        <ProfileDropdown email={userEmail} />
+      </div>
     </header>
   );
 }

@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { GuestbookSettings } from "@shared/types";
+import type { DrawingData } from "@shared/types/drawing";
+import { DrawingCanvas } from "@/components/canvas/drawing-canvas";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 interface CollectionGuestbook {
   id: string;
@@ -18,13 +22,11 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
   const [link, setLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [drawingData, setDrawingData] = useState<DrawingData | null>(null);
 
-  const fontFamily =
-    settings.font === "handwriting"
-      ? '"Caveat", cursive'
-      : settings.font === "mono"
-        ? "monospace"
-        : "system-ui, sans-serif";
+  const handleDrawingChange = useCallback((data: DrawingData) => {
+    setDrawingData(data);
+  }, []);
 
   useEffect(() => {
     fetch("/api/v1/analytics", {
@@ -52,13 +54,14 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
           name: name.trim(),
           message: message.trim() || undefined,
           link: link.trim() || undefined,
-          stroke_data: { strokes: [] },
+          stroke_data: drawingData ?? { version: 1, width: 400, height: 250, strokes: [] },
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error?.message ?? "Failed to submit");
+        const msg = typeof data.error === "string" ? data.error : "Failed to submit";
+        throw new Error(msg);
       }
 
       setSubmitted(true);
@@ -83,15 +86,12 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
 
   if (submitted) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center"
-        style={{ backgroundColor: settings.background_color, fontFamily }}
-      >
+      <div className="flex min-h-screen items-center justify-center bg-bg-page px-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold" style={{ color: settings.text_color }}>
+          <h1 className="text-subheading font-semibold text-text-primary">
             Thank you!
           </h1>
-          <p className="mt-2" style={{ color: settings.text_color, opacity: 0.7 }}>
+          <p className="mt-2 text-body font-medium text-text-secondary">
             Your signature has been submitted.
           </p>
         </div>
@@ -100,87 +100,73 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
   }
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center px-4 py-12"
-      style={{ backgroundColor: settings.background_color, fontFamily }}
-    >
-      <div className="w-full max-w-md">
-        <div className="text-center">
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: settings.text_color }}
-          >
+    <div className="flex min-h-screen items-center justify-center bg-bg-page px-4 py-12">
+      <div className="w-full max-w-md flex flex-col gap-[24px]">
+        {/* Logo + Heading + description — outside the card */}
+        <div className="text-center flex flex-col items-center gap-[8px]">
+          <img src={settings.logo_url || "/logo.svg"} alt="Logo" className="w-[56px] h-[42px] object-contain" />
+          <h1 className="text-subheading font-semibold text-text-primary">
             {settings.collection_title}
           </h1>
           {settings.collection_description && (
-            <p
-              className="mt-2"
-              style={{ color: settings.text_color, opacity: 0.7, fontSize: "14px" }}
-            >
+            <p className="text-body-sm font-medium text-text-secondary">
               {settings.collection_description}
             </p>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          {/* Drawing canvas placeholder */}
-          <div
-            className="flex h-32 items-center justify-center rounded-xl border-2 border-dashed"
-            style={{
-              backgroundColor: settings.canvas_background_color,
-              borderColor: settings.text_color,
-              opacity: 0.3,
-            }}
-          >
-            <span style={{ color: settings.text_color, fontSize: "14px" }}>
-              Drawing canvas (coming soon)
-            </span>
-          </div>
-
-          <input
-            type="text"
-            required
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={100}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-            style={{ fontFamily }}
-          />
-
-          {settings.show_message_field && (
-            <textarea
-              placeholder="Your message (optional)"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              maxLength={200}
-              rows={3}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-              style={{ fontFamily }}
+        {/* Card: editor + form fields + button */}
+        <Card>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-[16px] p-[24px]">
+            <DrawingCanvas
+              onChange={handleDrawingChange}
+              brandColor={settings.brand_color}
             />
-          )}
 
-          {settings.show_link_field && (
-            <input
-              type="url"
-              placeholder="Your website (optional)"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              maxLength={500}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-              style={{ fontFamily }}
+            <Input
+              type="text"
+              required
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={100}
             />
-          )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-full py-3 text-base font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: settings.brand_color, fontFamily }}
-          >
-            {submitting ? "Submitting..." : settings.cta_text}
-          </button>
-        </form>
+            {settings.show_message_field && (
+              <textarea
+                placeholder="Your message (optional)"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                maxLength={200}
+                rows={3}
+                className="w-full rounded-input border border-border bg-bg-input px-[10px] py-[10px] text-body font-medium text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors resize-none"
+              />
+            )}
+
+            {settings.show_link_field && (
+              <Input
+                type="url"
+                placeholder="Your website (optional)"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                maxLength={500}
+              />
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center justify-center font-semibold h-[44px] w-full transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-50"
+              style={{
+                backgroundColor: settings.brand_color,
+                color: settings.button_text_color,
+                borderRadius: `${settings.button_border_radius}px`,
+              }}
+            >
+              {submitting ? "Submitting..." : settings.cta_text}
+            </button>
+          </form>
+        </Card>
       </div>
     </div>
   );

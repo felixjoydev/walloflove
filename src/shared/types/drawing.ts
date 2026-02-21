@@ -6,6 +6,8 @@ export interface DrawingData {
     points: ReadonlyArray<readonly [x: number, y: number, pressure: number]>;
     color: string;
     size: number;
+    tool?: "pencil" | "marker" | "eraser";
+    opacity?: number;
   }>;
 }
 

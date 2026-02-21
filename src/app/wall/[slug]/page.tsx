@@ -15,7 +15,7 @@ export default async function WallPage({
   const guestbook = await getPublicGuestbookBySlug(supabaseAdmin, slug);
   if (!guestbook) notFound();
 
-  const { entries } = await listApprovedEntries(supabaseAdmin, guestbook.id, null);
+  const { entries, cursor } = await listApprovedEntries(supabaseAdmin, guestbook.id, null);
   const settings = mergeSettings(
     guestbook.settings as Partial<GuestbookSettings> | null
   );
@@ -29,6 +29,7 @@ export default async function WallPage({
         settings,
       }}
       entries={entries}
+      initialCursor={cursor}
     />
   );
 }

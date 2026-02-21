@@ -2,6 +2,7 @@ export interface GuestbookSettings {
   background_color?: string;
   card_background_color?: string;
   text_color?: string;
+  card_text_color?: string;
   accent_color?: string;
   font?: "handwriting" | "sans" | "mono";
   card_border_radius?: number;
@@ -20,16 +21,21 @@ export interface GuestbookSettings {
   widget_title?: string;
   widget_description?: string;
   wall_layout?: "grid" | "masonry";
+  website_text?: string;
+  website_link?: string;
+  button_text_color?: string;
+  button_border_radius?: number;
 }
 
 export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
-  background_color: "transparent",
+  background_color: "#FBFBFB",
   card_background_color: "#ffffff",
   text_color: "#1a1a1a",
+  card_text_color: "#1a1a1a",
   accent_color: "#6366f1",
-  font: "handwriting",
+  font: "sans",
   card_border_radius: 12,
-  canvas_background_color: "#ffffff",
+  canvas_background_color: "#F6F6F6",
   moderation_mode: "auto_approve",
   cta_text: "Sign the Guestbook",
   max_entries_displayed: 50,
@@ -40,10 +46,14 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   wall_title: "Wall of Love",
   wall_description: "See what people are saying",
   collection_title: "Sign our Guestbook",
-  collection_description: "Leave your mark with a signature",
+  collection_description: "Leave your mark with a scribble",
   widget_title: "Guestbook",
-  widget_description: "",
+  widget_description: "See what our customers are scribbling",
   wall_layout: "masonry",
+  website_text: "Visit our website",
+  website_link: "",
+  button_text_color: "#ffffff",
+  button_border_radius: 9999,
 } as const;
 
 export function mergeSettings(

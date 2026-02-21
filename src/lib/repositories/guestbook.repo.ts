@@ -106,14 +106,15 @@ export async function updateGuestbookSettings(
   id: string,
   settings: Partial<GuestbookSettings>
 ) {
-  // Atomic JSONB merge — no race condition, single round-trip
-  const { data, error } = await supabase.rpc("merge_guestbook_settings", {
-    guestbook_id: id,
-    new_settings: settings as Record<string, unknown>,
-  });
+  const { data, error } = await supabase
+    .from("guestbooks")
+    .update({ settings: settings as Record<string, unknown> })
+    .eq("id", id)
+    .select("settings")
+    .single();
 
   if (error) throw error;
-  return data;
+  return data?.settings;
 }
 
 export async function updateGuestbookName(

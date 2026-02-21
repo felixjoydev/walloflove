@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -14,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${GeistSans.className} ${GeistMono.variable}`}>
       <body className="min-h-screen bg-white text-neutral-900 antialiased">
         {children}
         <Toaster position="bottom-right" richColors />

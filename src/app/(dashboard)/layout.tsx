@@ -22,14 +22,14 @@ export default async function DashboardLayout({
   const guestbookList = guestbooks.map((g) => ({ id: g.id, name: g.name }));
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-bg-page">
       <TopNavbar guestbooks={guestbookList} userEmail={user.email ?? ""} />
-      <div className="flex flex-1 overflow-hidden">
-        <IconSidebar />
-        <main className="flex-1 overflow-y-auto px-6 py-8 lg:px-10">
+      <IconSidebar />
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[720px] px-6 py-8">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

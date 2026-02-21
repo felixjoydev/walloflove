@@ -1,0 +1,11 @@
+export default function OnboardingLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-bg-page px-4">
+      {children}
+    </main>
+  );
+}

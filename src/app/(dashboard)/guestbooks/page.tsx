@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { listGuestbooks } from "@/lib/repositories/guestbook.repo";
-import { CreateFirstGuestbook } from "@/components/guestbook/create-first-guestbook";
 
 export default async function GuestbooksPage() {
   const supabase = await createClient();
@@ -17,5 +16,5 @@ export default async function GuestbooksPage() {
     redirect(`/guestbooks/${guestbooks[0].id}/inbox`);
   }
 
-  return <CreateFirstGuestbook />;
+  redirect("/create-guestbook");
 }

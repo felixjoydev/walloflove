@@ -1,17 +1,47 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   getGuestbook,
   updateGuestbookSettings,
 } from "@/lib/repositories/guestbook.repo";
-import {
-  getSubscription,
-  getUserPlan,
-} from "@/lib/repositories/subscription.repo";
-import { PLANS } from "@/lib/stripe/config";
 import type { GuestbookSettings } from "@shared/types";
+
+export async function uploadLogoAction(
+  guestbookId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const guestbook = await getGuestbook(supabase, guestbookId);
+  if (!guestbook || guestbook.user_id !== user.id) {
+    return { error: "Not found", url: null };
+  }
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided", url: null };
+
+  const ext = file.name.split(".").pop() ?? "png";
+  const path = `${user.id}/${guestbookId}/logo.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("logos")
+    .upload(path, file, { upsert: true });
+
+  if (error) return { error: error.message, url: null };
+
+  const { data: urlData } = supabase.storage
+    .from("logos")
+    .getPublicUrl(path);
+
+  return { error: null, url: urlData.publicUrl };
+}
 
 export async function saveThemeAction(
   guestbookId: string,
@@ -29,15 +59,35 @@ export async function saveThemeAction(
   }
 
   try {
-    const subscription = await getSubscription(supabase, user.id);
-    const plan = getUserPlan(subscription);
-    if (!PLANS[plan].fullTheme) {
-      return { error: "Theme customization requires a paid plan" };
-    }
-
     await updateGuestbookSettings(supabase, guestbookId, theme);
     return { error: null };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to save" };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Failed to save";
+    return { error: message };
   }
+}
+
+export async function publishAction(guestbookId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const guestbook = await getGuestbook(supabase, guestbookId);
+  if (!guestbook || guestbook.user_id !== user.id) {
+    return { error: "Not found" };
+  }
+
+  if (guestbook.slug) {
+    revalidatePath(`/wall/${guestbook.slug}`);
+    revalidatePath(`/collect/${guestbook.slug}`);
+  }
+
+  return { error: null };
 }

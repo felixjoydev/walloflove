@@ -1,21 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useGuestbookContext } from "@/components/providers/guestbook-provider";
 import type { GuestbookSettings } from "@shared/types";
-import { saveThemeAction } from "@/app/(dashboard)/guestbooks/[id]/theme/actions";
-import { ColorField } from "@/components/ui/color-field";
+import { saveThemeAction, publishAction, uploadLogoAction } from "@/app/(dashboard)/guestbooks/[id]/theme/actions";
+import {
+  SettingsTextField,
+  SettingsColorField,
+  SettingsSelectField,
+  SettingsTextareaField,
+  SettingsUploadField,
+  SettingsSliderField,
+} from "@/components/ui/settings-field";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { DrawingCanvas } from "@/components/canvas/drawing-canvas";
+import { getDotColor } from "@/lib/utils/color";
 import { EmbedModal } from "./embed-modal";
 
 type PreviewTab = "wall" | "widget" | "collection";
 
 type Font = NonNullable<GuestbookSettings["font"]>;
 
-const FONTS: { label: string; value: Font }[] = [
+const FONT_OPTIONS: { label: string; value: string }[] = [
+  { label: "System", value: "sans" },
   { label: "Handwriting", value: "handwriting" },
-  { label: "Sans-serif", value: "sans" },
   { label: "Monospace", value: "mono" },
 ];
 
@@ -38,15 +50,40 @@ export function PreviewEditor({
   const router = useRouter();
   const guestbook = useGuestbookContext();
   const [settings, setSettings] = useState<Required<GuestbookSettings>>(guestbook.settings);
+  const savedSettings = useRef<Required<GuestbookSettings>>(guestbook.settings);
   const [tab, setTab] = useState<PreviewTab>("wall");
   const [saving, setSaving] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
-  const [urlCopied, setUrlCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [needsPublish, setNeedsPublish] = useState(false);
+  const [hoveredField, setHoveredField] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const headerBarRef = useRef<HTMLDivElement>(null);
+
+  // Track when the header bar scrolls out of view
+  useEffect(() => {
+    const el = headerBarRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeaderHidden(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.signboard.app";
   const slug = guestbook.slug ?? guestbookId;
   const wallUrl = `${appUrl}/wall/${slug}`;
   const collectUrl = `${appUrl}/collect/${slug}`;
+
+  const currentUrl = tab === "collection" ? collectUrl : wallUrl;
+
+  // Consider "published" if slug exists (refine later with actual published state)
+  const isPublished = !!guestbook.slug;
+
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings.current);
 
   function update<K extends keyof GuestbookSettings>(key: K, value: GuestbookSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -55,17 +92,37 @@ export function PreviewEditor({
   async function handleSave() {
     setSaving(true);
     const result = await saveThemeAction(guestbookId, settings);
-    if (result.error) toast.error(result.error);
-    else toast.success("Saved");
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Saved");
+      savedSettings.current = settings;
+      setNeedsPublish(true);
+    }
     setSaving(false);
     router.refresh();
   }
 
-  async function copyUrl(url: string) {
-    await navigator.clipboard.writeText(url);
-    setUrlCopied(true);
+  async function handlePublish() {
+    if (!needsPublish) return;
+    setPublishing(true);
+    const result = await publishAction(guestbookId);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Published!");
+      setNeedsPublish(false);
+    }
+    setPublishing(false);
+  }
+
+  async function copyUrl() {
+    await navigator.clipboard.writeText(currentUrl);
     toast.success("URL copied!");
-    setTimeout(() => setUrlCopied(false), 2000);
+  }
+
+  function openExternal() {
+    window.open(currentUrl, "_blank", "noopener,noreferrer");
   }
 
   const fontFamily =
@@ -76,149 +133,316 @@ export function PreviewEditor({
         : "system-ui, sans-serif";
 
   const tabs: { label: string; value: PreviewTab }[] = [
-    { label: "Wall of Love", value: "wall" },
+    { label: "Wall of love", value: "wall" },
     { label: "Widget", value: "widget" },
     { label: "Collection Link", value: "collection" },
   ];
 
+  /* ─── Hover-highlight mapping: editor field → preview zones ─── */
+  const FIELD_ZONES: Record<string, string[]> = {
+    logo: ["logo", "link-card"],
+    font: [],
+    "website-text": ["website-text", "link-card"],
+    "website-link": ["logo", "website-text", "link-icon", "link-card"],
+    title: ["title"],
+    description: ["description"],
+    "button-text": ["cta", "cta-text"],
+    "button-radius": ["cta"],
+    "button-color": ["cta", "cta-frame"],
+    "button-text-color": ["cta", "cta-text"],
+    background: ["bg"],
+    "title-color": ["title", "description"],
+    "card-bg": ["cards", "card-frame"],
+    "card-text": ["cards", "card-text-only"],
+  };
+
+  const activeZones = hoveredField && hoveredField !== editingField ? (FIELD_ZONES[hoveredField] ?? null) : null;
+  // null or [] means no dimming
+  const hasActiveHighlight = activeZones !== null && activeZones.length > 0;
+
+  function hlWrap(field: string, hoverOnly = false) {
+    const base = {
+      onMouseEnter: () => setHoveredField(field),
+      onMouseLeave: () => setHoveredField(null),
+    };
+    if (hoverOnly) return base;
+    return {
+      ...base,
+      onFocusCapture: () => setEditingField(field),
+      onBlurCapture: () => setEditingField(null),
+    };
+  }
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Preview & Publish</h1>
-
-      <div className="mt-6 flex gap-6 lg:flex-row flex-col">
-        {/* Left panel — controls */}
-        <div className="w-full lg:w-80 shrink-0 space-y-5">
-          <ColorField
-            label="Brand color"
-            value={settings.brand_color}
-            onChange={(c) => update("brand_color", c)}
-          />
-          <ColorField
-            label="Background"
-            value={settings.background_color}
-            onChange={(c) => update("background_color", c)}
-          />
-          <ColorField
-            label="Text color"
-            value={settings.text_color}
-            onChange={(c) => update("text_color", c)}
-          />
-          <ColorField
-            label="Card background"
-            value={settings.card_background_color}
-            onChange={(c) => update("card_background_color", c)}
-          />
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium">Font</label>
-            <select
-              value={settings.font}
-              onChange={(e) => update("font", e.target.value as Font)}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-            >
-              {FONTS.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium">Title</label>
-            <input
-              type="text"
-              value={tab === "wall" ? settings.wall_title : tab === "collection" ? settings.collection_title : settings.widget_title}
-              onChange={(e) => {
-                if (tab === "wall") update("wall_title", e.target.value);
-                else if (tab === "collection") update("collection_title", e.target.value);
-                else update("widget_title", e.target.value);
-              }}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium">Description</label>
-            <textarea
-              rows={2}
-              value={tab === "wall" ? settings.wall_description : tab === "collection" ? settings.collection_description : settings.widget_description}
-              onChange={(e) => {
-                if (tab === "wall") update("wall_description", e.target.value);
-                else if (tab === "collection") update("collection_description", e.target.value);
-                else update("widget_description", e.target.value);
-              }}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-            />
-          </div>
-
+    <div className={hasChanges ? "-mb-8" : ""}>
+      {/* Tabs */}
+      <div className="flex gap-[4px] border-b border-border">
+        {tabs.map((t) => (
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`border-b-2 px-[16px] py-[10px] text-body font-medium transition-colors cursor-pointer ${
+              tab === t.value
+                ? "border-text-primary text-text-primary"
+                : "border-transparent text-text-placeholder hover:text-text-secondary"
+            }`}
           >
-            {saving ? "Saving..." : "Save changes"}
+            {t.label}
           </button>
+        ))}
+      </div>
+
+      {/* Header bar — URL + Publish for wall/collection, Get Embed Code for widget */}
+      <div ref={headerBarRef} className="mt-[16px] flex items-center justify-between">
+        {tab === "widget" ? (
+          <div />
+        ) : (
+          <div className="flex items-center gap-[24px] min-w-0">
+            <div className="flex items-center gap-[8px] min-w-0">
+              <GlobeIcon />
+              <span className="text-body font-medium text-text-primary truncate" title={currentUrl}>
+                {currentUrl.length > 40 ? currentUrl.slice(0, 40) + "..." : currentUrl}
+              </span>
+            </div>
+            <div className="flex items-center gap-[12px] shrink-0">
+              <button
+                onClick={() => toast.info("Edit slug coming soon")}
+                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer"
+                title="Edit"
+              >
+                <EditIcon />
+              </button>
+              <button
+                onClick={copyUrl}
+                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer"
+                title="Copy URL"
+              >
+                <CopyIcon />
+              </button>
+              <button
+                onClick={openExternal}
+                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer"
+                title="Open in new tab"
+              >
+                <ExternalLinkIcon />
+              </button>
+            </div>
+          </div>
+        )}
+        {tab === "widget" ? (
+          <Button size="small" onClick={() => setShowEmbed(true)}>
+            Get Embed Code
+          </Button>
+        ) : (
+          <Button
+            size="small"
+            onClick={handlePublish}
+            disabled={publishing || !needsPublish}
+            className="shrink-0"
+          >
+            {publishing ? "Publishing..." : needsPublish ? "Publish" : "Published"}
+          </Button>
+        )}
+      </div>
+
+      {/* Controls + Preview */}
+      <div className="mt-[24px] flex gap-[16px] lg:flex-row flex-col">
+        {/* Left panel — controls (40%) */}
+        <div className="w-full lg:w-[40%] shrink-0">
+          {/* Font — common to all tabs, sits above sections */}
+          <div {...hlWrap("font")} className="mb-[16px]">
+            <SettingsSelectField
+              label="Font"
+              value={settings.font}
+              onChange={(v) => update("font", v as Font)}
+              options={FONT_OPTIONS}
+            />
+          </div>
+
+          {/* ── Header section (wall + collection have logo) ── */}
+          {tab !== "widget" && (
+            <SectionHeader label="Header" first />
+          )}
+          <div className="space-y-[16px]">
+            {tab !== "widget" && (
+              <div {...hlWrap("logo", true)}>
+                <SettingsUploadField
+                  label="Logo"
+                  onChange={async (file) => {
+                    const blobUrl = URL.createObjectURL(file);
+                    update("logo_url", blobUrl);
+
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    const result = await uploadLogoAction(guestbookId, fd);
+                    if (result.error) {
+                      toast.error(result.error);
+                      update("logo_url", null);
+                    } else if (result.url) {
+                      update("logo_url", result.url);
+                    }
+                    URL.revokeObjectURL(blobUrl);
+                  }}
+                  onRemove={() => update("logo_url", null)}
+                  value={settings.logo_url ?? undefined}
+                />
+              </div>
+            )}
+            {tab === "wall" && (
+              <>
+                <div {...hlWrap("website-text")}>
+                  <SettingsTextField
+                    label="Website Text"
+                    value={settings.website_text}
+                    onChange={(v) => update("website_text", v)}
+                  />
+                </div>
+                <div {...hlWrap("website-link")}>
+                  <SettingsTextField
+                    label="Website Link"
+                    value={settings.website_link}
+                    onChange={(v) => update("website_link", v)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ── Content section ── */}
+          <SectionHeader label="Content" first={tab === "widget"} />
+          <div className="space-y-[16px]">
+            <div {...hlWrap("title")}>
+              <SettingsTextField
+                label="Title"
+                value={tab === "wall" ? settings.wall_title : tab === "collection" ? settings.collection_title : settings.widget_title}
+                onChange={(v) => {
+                  if (tab === "wall") update("wall_title", v);
+                  else if (tab === "collection") update("collection_title", v);
+                  else update("widget_title", v);
+                }}
+              />
+            </div>
+            <div {...hlWrap("description")}>
+              <SettingsTextareaField
+                label="Description"
+                value={tab === "wall" ? settings.wall_description : tab === "collection" ? settings.collection_description : settings.widget_description}
+                onChange={(v) => {
+                  if (tab === "wall") update("wall_description", v);
+                  else if (tab === "collection") update("collection_description", v);
+                  else update("widget_description", v);
+                }}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {/* ── Button section ── */}
+          <SectionHeader label="Button" />
+          <div className="space-y-[16px]">
+            <div {...hlWrap("button-text")}>
+              <SettingsTextField
+                label="Button Text"
+                value={settings.cta_text}
+                onChange={(v) => update("cta_text", v)}
+              />
+            </div>
+            <div {...hlWrap("button-radius")}>
+              <SettingsSliderField
+                label="Button radius"
+                value={settings.button_border_radius}
+                onChange={(v) => update("button_border_radius", v)}
+                steps={[0, 4, 8, 12, 16, 24, 9999]}
+              />
+            </div>
+            <div {...hlWrap("button-color")}>
+              <SettingsColorField
+                label="Button color"
+                value={settings.brand_color}
+                onChange={(c) => update("brand_color", c)}
+              />
+            </div>
+            <div {...hlWrap("button-text-color")}>
+              <SettingsColorField
+                label="Button Text Color"
+                value={settings.button_text_color}
+                onChange={(c) => update("button_text_color", c)}
+              />
+            </div>
+          </div>
+
+          {/* ── Theme section ── */}
+          <SectionHeader label="Theme" />
+          <div className="space-y-[16px]">
+            <div {...hlWrap("background")}>
+              <SettingsColorField
+                label="Background color"
+                value={settings.background_color}
+                onChange={(c) => update("background_color", c)}
+              />
+            </div>
+            <div {...hlWrap("title-color")}>
+              <SettingsColorField
+                label="Title Color"
+                value={settings.text_color}
+                onChange={(c) => update("text_color", c)}
+              />
+            </div>
+            {tab !== "collection" && (
+              <>
+                <div {...hlWrap("card-bg")}>
+                  <SettingsColorField
+                    label="Card background"
+                    value={settings.card_background_color}
+                    onChange={(c) => update("card_background_color", c)}
+                    pickerPosition="top"
+                  />
+                </div>
+                <div {...hlWrap("card-text")}>
+                  <SettingsColorField
+                    label="Card Text Color"
+                    value={settings.card_text_color}
+                    onChange={(c) => update("card_text_color", c)}
+                    pickerPosition="top"
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Right panel — preview */}
-        <div className="flex-1 min-w-0">
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-neutral-200">
-            {tabs.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => setTab(t.value)}
-                className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                  tab === t.value
-                    ? "border-neutral-900 text-neutral-900"
-                    : "border-transparent text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Action bar */}
-          <div className="mt-4 flex items-center gap-3">
-            {tab === "wall" && (
-              <button
-                onClick={() => copyUrl(wallUrl)}
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-              >
-                {urlCopied ? "Copied!" : "Copy Wall URL"}
-              </button>
-            )}
-            {tab === "widget" && (
-              <button
-                onClick={() => setShowEmbed(true)}
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-              >
-                Get Embed Code
-              </button>
-            )}
-            {tab === "collection" && (
-              <button
-                onClick={() => copyUrl(collectUrl)}
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-              >
-                {urlCopied ? "Copied!" : "Copy Collection URL"}
-              </button>
-            )}
-          </div>
-
-          {/* Preview area */}
+        {/* Right panel — preview (60%), sticky so it follows scroll */}
+        <div className="w-full lg:w-[60%] self-start sticky top-[4px]">
+          {/* Sticky action button — only shows when original header scrolls out of view */}
+          {headerHidden && (
+            <div className="flex justify-end mb-[12px]">
+              {tab === "widget" ? (
+                <Button size="small" onClick={() => setShowEmbed(true)}>
+                  Get Embed Code
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  onClick={handlePublish}
+                  disabled={publishing || !needsPublish}
+                  className="shrink-0"
+                >
+                  {publishing ? "Publishing..." : needsPublish ? "Publish" : "Published"}
+                </Button>
+              )}
+            </div>
+          )}
           <div
-            className="mt-4 rounded-xl border border-neutral-200 p-6 min-h-[400px]"
-            style={{ backgroundColor: settings.background_color, fontFamily }}
+            className={`rounded-card border border-border bg-bg-card shadow-card p-[20px] relative overflow-hidden ${tab !== "widget" ? "min-h-[480px]" : ""}`}
+            style={{ backgroundColor: tab === "collection" ? "#FBFBFB" : settings.background_color, fontFamily }}
           >
             {tab === "wall" && (
-              <WallPreview settings={settings} entries={entries} fontFamily={fontFamily} />
+              <WallPreview settings={settings} entries={entries} fontFamily={fontFamily} wallUrl={wallUrl} highlightZones={hasActiveHighlight ? activeZones : null} />
             )}
             {tab === "widget" && (
-              <WidgetPreview settings={settings} entries={entries} fontFamily={fontFamily} />
+              <WidgetPreview settings={settings} entries={entries} fontFamily={fontFamily} highlightZones={hasActiveHighlight ? activeZones : null} />
             )}
             {tab === "collection" && (
-              <CollectionPreview settings={settings} fontFamily={fontFamily} />
+              <CollectionPreview settings={settings} fontFamily={fontFamily} highlightZones={hasActiveHighlight ? activeZones : null} />
             )}
           </div>
         </div>
@@ -227,72 +451,449 @@ export function PreviewEditor({
       {showEmbed && (
         <EmbedModal guestbookId={guestbookId} onClose={() => setShowEmbed(false)} />
       )}
+
+      {/* Sticky save bar — appears only when settings differ from saved */}
+      {hasChanges && (
+        <div className="sticky bottom-0 z-50">
+          <div
+            className="h-[24px]"
+            style={{ background: "linear-gradient(to top, var(--color-bg-page) 0%, transparent 100%)" }}
+          />
+          <div className="bg-bg-page pb-[16px] pt-[8px] flex justify-start">
+            <Button size="small" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/* ─── Preview sub-components ─── */
 
 function WallPreview({
   settings,
   entries,
   fontFamily,
+  wallUrl,
+  highlightZones,
 }: {
   settings: Required<GuestbookSettings>;
   entries: Entry[];
   fontFamily: string;
+  wallUrl: string;
+  highlightZones: string[] | null;
 }) {
+  const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
+  const logoUrl = settings.logo_url ?? undefined;
+
+  function zoneStyle(zone: string): React.CSSProperties {
+    if (!highlightZones) return { transition: "opacity 0.2s ease" };
+    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.15;
+    return {
+      opacity: highlightZones.includes(zone) ? 1 : dimOpacity,
+      transition: "opacity 0.2s ease",
+    };
+  }
+
+  // Inner card zones only activate when the cards grid itself is highlighted,
+  // otherwise the parent "cards" zone already handles dimming.
+  function cardInnerStyle(zone: string): React.CSSProperties {
+    if (!highlightZones || !highlightZones.includes("cards")) {
+      return { transition: "opacity 0.2s ease" };
+    }
+    return zoneStyle(zone);
+  }
+
+  // CTA inner zone highlighting:
+  // - Text highlighted (button-text / button-text-color): scale+pulse text, frame stays normal
+  // - Frame highlighted (button-color): dim text, frame stays normal
+  // - Neither inner zone active (button-radius): everything stays normal
+  function ctaInnerStyle(zone: string): React.CSSProperties {
+    if (!highlightZones || !highlightZones.includes("cta")) {
+      return { transition: "opacity 0.2s ease, transform 0.2s ease" };
+    }
+    const highlighted = highlightZones.includes(zone);
+    // Text zone highlighted → scale up + pulse
+    if (highlighted && zone === "cta-text") {
+      return {
+        transform: "scale(1.08)",
+        animation: "hl-pulse 1.2s ease-in-out infinite",
+        transition: "transform 0.2s ease",
+      };
+    }
+    // Non-highlighted zone when frame is active → dim (text dims for button-color)
+    if (!highlighted && highlightZones.includes("cta-frame")) {
+      return {
+        opacity: 0.15,
+        transition: "opacity 0.2s ease",
+      };
+    }
+    return {
+      transition: "opacity 0.2s ease, transform 0.2s ease",
+    };
+  }
+
+  const placeholders = [
+    { id: "s1", name: "Ronald", message: "You guys are awesome", link: null, stroke_data: null, created_at: "2026-02-16T00:00:00Z" },
+    { id: "s2", name: "Sarah", message: "Love this product!", link: null, stroke_data: null, created_at: "2026-02-15T00:00:00Z" },
+    { id: "s3", name: "Alex", message: "Super cool", link: null, stroke_data: null, created_at: "2026-02-14T00:00:00Z" },
+    { id: "s4", name: "Jordan", message: "Really impressive", link: null, stroke_data: null, created_at: "2026-02-13T00:00:00Z" },
+    { id: "s5", name: "Taylor", message: "Keep it up!", link: null, stroke_data: null, created_at: "2026-02-12T00:00:00Z" },
+    { id: "s6", name: "Morgan", message: "Fantastic work", link: null, stroke_data: null, created_at: "2026-02-11T00:00:00Z" },
+  ];
+  const real = entries.slice(0, 6);
+  const sampleEntries = real.length >= 6 ? real : [...real, ...placeholders.slice(real.length)];
+
+  /* ── Canvas view state ── */
+  const CELL_W = 100;
+  const CELL_H = 70;
+  const CELL_GAP = 12;
+  const JITTER = 6;
+  const canvasCols = 3;
+
+  function simpleHash(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  const canvasPositions = useMemo(() => {
+    return sampleEntries.map((entry, index) => {
+      const col = index % canvasCols;
+      const row = Math.floor(index / canvasCols);
+      const hash = simpleHash(entry.id);
+      const jx = (hash % (JITTER * 2 + 1)) - JITTER;
+      const jy = ((hash >> 8) % (JITTER * 2 + 1)) - JITTER;
+      return {
+        x: col * (CELL_W + CELL_GAP) + CELL_GAP + jx,
+        y: row * (CELL_H + CELL_GAP) + CELL_GAP + jy,
+      };
+    });
+  }, [sampleEntries]);
+
+  const canvasW = canvasCols * (CELL_W + CELL_GAP) + CELL_GAP;
+  const canvasRows = Math.ceil(sampleEntries.length / canvasCols);
+  const canvasH = canvasRows * (CELL_H + CELL_GAP) + CELL_GAP;
+
+  const [cvZoom, setCvZoom] = useState(1);
+  const [cvOffset, setCvOffset] = useState({ x: 0, y: 0 });
+  const [cvDragging, setCvDragging] = useState(false);
+  const cvPanRef = useRef<{ active: boolean; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const cvContainerRef = useRef<HTMLDivElement>(null);
+  const cvCenteredRef = useRef(false);
+
+  // Center the canvas content when first switching to canvas view
+  useEffect(() => {
+    if (viewMode === "canvas" && !cvCenteredRef.current && cvContainerRef.current) {
+      const rect = cvContainerRef.current.getBoundingClientRect();
+      setCvOffset({
+        x: (rect.width - canvasW) / 2,
+        y: (rect.height - canvasH) / 2,
+      });
+      cvCenteredRef.current = true;
+    }
+  }, [viewMode, canvasW, canvasH]);
+
+  // Reset centering flag when switching back to grid
+  useEffect(() => {
+    if (viewMode === "grid") cvCenteredRef.current = false;
+  }, [viewMode]);
+
+  const handleCvPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest("[data-no-pan]")) return;
+      cvPanRef.current = { active: true, sx: e.clientX, sy: e.clientY, ox: cvOffset.x, oy: cvOffset.y, moved: false };
+      setCvDragging(false);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [cvOffset.x, cvOffset.y]
+  );
+
+  const handleCvPointerMove = useCallback((e: React.PointerEvent) => {
+    const p = cvPanRef.current;
+    if (!p?.active) return;
+    const dx = e.clientX - p.sx;
+    const dy = e.clientY - p.sy;
+    if (!p.moved && Math.abs(dx) + Math.abs(dy) > 4) {
+      p.moved = true;
+      setCvDragging(true);
+    }
+    if (p.moved) setCvOffset({ x: p.ox + dx, y: p.oy + dy });
+  }, []);
+
+  const handleCvPointerUp = useCallback(() => {
+    cvPanRef.current = null;
+    setCvDragging(false);
+  }, []);
+
+  const handleCvWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+    setCvZoom((z) => Math.min(2, Math.max(0.4, +(z - e.deltaY * 0.002).toFixed(2))));
+  }, []);
+
+  const handleCvReset = useCallback(() => {
+    setCvZoom(1);
+    if (cvContainerRef.current) {
+      const rect = cvContainerRef.current.getBoundingClientRect();
+      setCvOffset({ x: (rect.width - canvasW) / 2, y: (rect.height - canvasH) / 2 });
+    }
+  }, [canvasW, canvasH]);
+
   return (
-    <div>
-      <h2 style={{ color: settings.text_color, fontSize: "24px", fontWeight: 700 }}>
-        {settings.wall_title}
-      </h2>
-      <p style={{ color: settings.text_color, opacity: 0.7, fontSize: "14px", marginTop: "4px" }}>
-        {settings.wall_description}
-      </p>
-      <div className="mt-4 columns-2 gap-4">
-        {(entries.length > 0 ? entries.slice(0, 6) : [
-          { id: "sample", name: "Jane Doe", message: "Great work!", created_at: new Date().toISOString() },
-        ]).map((entry) => (
+    <>
+      {/* Top bar: Logo + link | View switcher */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[8px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[8px] py-[6px]" style={zoneStyle("link-card")}>
+          <div className="h-[24px] w-[24px] shrink-0 overflow-hidden" style={zoneStyle("logo")}>
+            <img
+              src={logoUrl || "/logo.svg"}
+              alt="Logo"
+              className="h-[24px] w-[24px] object-contain"
+            />
+          </div>
+          <span className="text-[14px] font-medium text-text-primary whitespace-nowrap" style={zoneStyle("website-text")}>
+            {settings.website_text || "Visit our website"}
+          </span>
+          <span style={zoneStyle("link-icon")}><ExternalLink2Icon /></span>
+        </div>
+        <div className="flex gap-[2px] rounded-icon border border-border bg-bg-card shadow-card-sm p-[2px] shrink-0" style={zoneStyle("grid-switcher")}>
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`flex items-center justify-center rounded-[6px] p-[6px] cursor-pointer transition-colors ${
+              viewMode === "grid" ? "bg-bg-subtle text-icon-active" : "text-icon-inactive hover:text-icon-active"
+            }`}
+          >
+            <GridPreviewIcon />
+          </button>
+          <button
+            onClick={() => setViewMode("canvas")}
+            className={`flex items-center justify-center rounded-[6px] p-[6px] cursor-pointer transition-colors ${
+              viewMode === "canvas" ? "bg-bg-subtle text-icon-active" : "text-icon-inactive hover:text-icon-active"
+            }`}
+          >
+            <CanvasPreviewIcon />
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "grid" ? (
+        <>
+          {/* Title */}
+          <div className="mt-[16px]" style={zoneStyle("title")}>
+            <h2
+              className="text-[18px] font-bold"
+              style={{ color: settings.text_color, fontFamily }}
+            >
+              {settings.wall_title}
+            </h2>
+          </div>
+          {/* Description */}
+          <div style={zoneStyle("description")}>
+            <p
+              className="text-[12px] mt-[4px]"
+              style={{ color: settings.text_color, opacity: 0.7, fontFamily }}
+            >
+              {settings.wall_description}
+            </p>
+          </div>
+
+          {/* Signature cards — 2-column grid */}
+          <div className="mt-[16px] grid grid-cols-2 gap-[12px]" style={zoneStyle("cards")}>
+            {sampleEntries.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex flex-col relative overflow-hidden"
+                style={{ borderRadius: `${settings.card_border_radius}px`, paddingTop: "10px", paddingRight: "10px", paddingBottom: "10px", paddingLeft: "28px" }}
+              >
+                {/* Background layer (bg + border + shadow) — dims independently */}
+                <div
+                  className="absolute inset-0 border border-border shadow-card"
+                  style={{ backgroundColor: settings.card_background_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-frame") }}
+                />
+                {/* Notebook punch holes */}
+                <div className="absolute left-[6px] top-[8px] bottom-[8px] flex flex-col items-center justify-between pointer-events-none">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-[10px] h-[10px] rounded-full"
+                      style={{
+                        backgroundColor: settings.background_color,
+                        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.15) inset",
+                      }}
+                    />
+                  ))}
+                </div>
+                {/* Content layer — on top */}
+                <div className="relative flex flex-col flex-1">
+                  {/* Doodle area with dots — dims for both card-bg and card-text highlights */}
+                  <div
+                    className="w-full h-[60px] flex items-center justify-center"
+                    style={{
+                      backgroundColor: settings.canvas_background_color,
+                      backgroundImage: `radial-gradient(circle, ${getDotColor(settings.background_color)} 1px, transparent 1px)`,
+                      backgroundSize: "14px 14px",
+                      borderRadius: "6px",
+                      ...cardInnerStyle("card-doodle"),
+                    }}
+                  >
+                    <SignatureSample color="#000000" />
+                  </div>
+                  {/* Text — dims for card-text highlight */}
+                  <div className="flex flex-col flex-1" style={cardInnerStyle("card-text-only")}>
+                    {/* Message */}
+                    {entry.message && (
+                      <p
+                        className="text-[10px] mt-[8px]"
+                        style={{ color: settings.card_text_color, opacity: 0.7, fontFamily }}
+                      >
+                        {entry.message}
+                      </p>
+                    )}
+                    {/* Name + date */}
+                    <div className="flex items-end justify-between mt-auto pt-[8px]">
+                      <div className="flex flex-col gap-[2px]">
+                        <span
+                          className="text-[10px] font-medium"
+                          style={{ color: settings.card_text_color, fontFamily }}
+                        >
+                          {entry.name}
+                        </span>
+                        <span
+                          className="text-[8px]"
+                          style={{ color: settings.card_text_color, opacity: 0.5 }}
+                        >
+                          {new Date(entry.created_at).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        /* ── Canvas view ── */
+        <div
+          ref={cvContainerRef}
+          className="mt-[16px] relative rounded-input overflow-hidden"
+          style={{ height: "380px" }}
+        >
+          {/* Pan/zoom viewport */}
           <div
-            key={entry.id}
-            className="mb-4 break-inside-avoid"
+            className="w-full h-full"
             style={{
-              backgroundColor: settings.card_background_color,
-              borderRadius: `${settings.card_border_radius}px`,
-              padding: "12px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              cursor: cvDragging ? "grabbing" : "grab",
+              backgroundImage: `radial-gradient(circle, ${getDotColor(settings.background_color)} 1px, transparent 1px)`,
+              backgroundSize: "14px 14px",
+              backgroundPosition: `${(cvOffset.x % 14) + 7}px ${(cvOffset.y % 14) + 7}px`,
             }}
+            onPointerDown={handleCvPointerDown}
+            onPointerMove={handleCvPointerMove}
+            onPointerUp={handleCvPointerUp}
+            onWheel={handleCvWheel}
           >
             <div
-              style={{ backgroundColor: settings.canvas_background_color, borderRadius: "6px", height: "60px" }}
-            />
-            <p style={{ color: settings.text_color, fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
-              {entry.name}
-            </p>
-            {entry.message && (
-              <p style={{ color: settings.text_color, fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>
-                {entry.message}
-              </p>
-            )}
+              style={{
+                transform: `translate(${cvOffset.x}px, ${cvOffset.y}px) scale(${cvZoom})`,
+                transformOrigin: "0 0",
+                width: canvasW,
+                height: canvasH,
+                position: "relative",
+              }}
+            >
+              {sampleEntries.map((entry, i) => (
+                <div
+                  key={entry.id}
+                  className="absolute"
+                  style={{
+                    left: canvasPositions[i].x,
+                    top: canvasPositions[i].y,
+                    width: CELL_W,
+                    height: CELL_H,
+                  }}
+                >
+                  <div className="w-full h-full flex items-center justify-center">
+                    <SignatureSample color="#000000" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-      <div className="mt-4 text-center">
+
+          {/* Zoom controls */}
+          <div className="absolute right-[8px] top-1/2 -translate-y-1/2 z-10 flex flex-col gap-[4px]" data-no-pan>
+            <div className="flex flex-col gap-[2px]">
+              <button
+                onClick={() => setCvZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)))}
+                className="w-[24px] h-[24px] flex items-center justify-center rounded-t-[6px] border border-border bg-bg-card shadow-card-sm cursor-pointer hover:bg-bg-subtle transition-colors text-[12px] font-medium text-text-primary"
+              >
+                +
+              </button>
+              <button
+                onClick={() => setCvZoom((z) => Math.max(0.4, +(z - 0.15).toFixed(2)))}
+                className="w-[24px] h-[24px] flex items-center justify-center rounded-b-[6px] border border-border bg-bg-card shadow-card-sm cursor-pointer hover:bg-bg-subtle transition-colors text-[12px] font-medium text-text-primary"
+              >
+                &minus;
+              </button>
+            </div>
+            <button
+              onClick={handleCvReset}
+              title="Reset view"
+              className="w-[24px] h-[24px] flex items-center justify-center rounded-[6px] border border-border bg-bg-card shadow-card-sm cursor-pointer hover:bg-bg-subtle transition-colors text-icon-inactive hover:text-icon-active"
+            >
+              <svg className="w-[12px] h-[12px]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <circle cx="8" cy="8" r="2" />
+                <line x1="8" y1="1" x2="8" y2="5" />
+                <line x1="8" y1="11" x2="8" y2="15" />
+                <line x1="1" y1="8" x2="5" y2="8" />
+                <line x1="11" y1="8" x2="15" y2="8" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating CTA button */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-20 flex justify-center pb-[16px] pt-[40px]"
+        style={{
+          background: `linear-gradient(to top, ${settings.background_color} 40%, transparent)`,
+          ...zoneStyle("cta"),
+        }}
+      >
         <span
-          style={{
-            display: "inline-block",
-            padding: "10px 24px",
-            backgroundColor: settings.brand_color,
-            color: "#fff",
-            borderRadius: "9999px",
-            fontSize: "14px",
-            fontWeight: 600,
-            fontFamily,
-          }}
+          className="relative inline-flex items-center justify-center px-[20px] py-[10px] cursor-pointer overflow-hidden"
+          style={{ borderRadius: `${settings.button_border_radius}px` }}
         >
-          {settings.cta_text}
+          {/* Button background layer */}
+          <span
+            className="absolute inset-0 shadow-card"
+            style={{
+              backgroundColor: settings.brand_color,
+              borderRadius: `${settings.button_border_radius}px`,
+              ...ctaInnerStyle("cta-frame"),
+            }}
+          />
+          {/* Button text layer */}
+          <span
+            className="relative text-[12px] font-semibold"
+            style={{ color: settings.button_text_color, fontFamily, ...ctaInnerStyle("cta-text") }}
+          >
+            {settings.cta_text || "Sign the Guestbook"}
+          </span>
         </span>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -300,119 +901,375 @@ function WidgetPreview({
   settings,
   entries,
   fontFamily,
+  highlightZones,
 }: {
   settings: Required<GuestbookSettings>;
   entries: Entry[];
   fontFamily: string;
+  highlightZones: string[] | null;
 }) {
+  function zoneStyle(zone: string): React.CSSProperties {
+    if (!highlightZones) return { transition: "opacity 0.2s ease" };
+    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.15;
+    return {
+      opacity: highlightZones.includes(zone) ? 1 : dimOpacity,
+      transition: "opacity 0.2s ease",
+    };
+  }
+
+  function cardInnerStyle(zone: string): React.CSSProperties {
+    if (!highlightZones || !highlightZones.includes("cards")) {
+      return { transition: "opacity 0.2s ease" };
+    }
+    return zoneStyle(zone);
+  }
+
+  function ctaInnerStyle(zone: string): React.CSSProperties {
+    if (!highlightZones || !highlightZones.includes("cta")) {
+      return { transition: "opacity 0.2s ease, transform 0.2s ease" };
+    }
+    const highlighted = highlightZones.includes(zone);
+    if (highlighted && zone === "cta-text") {
+      return {
+        transform: "scale(1.08)",
+        animation: "hl-pulse 1.2s ease-in-out infinite",
+        transition: "transform 0.2s ease",
+      };
+    }
+    if (!highlighted && highlightZones.includes("cta-frame")) {
+      return {
+        opacity: 0.15,
+        transition: "opacity 0.2s ease",
+      };
+    }
+    return {
+      transition: "opacity 0.2s ease, transform 0.2s ease",
+    };
+  }
+
+  const placeholders = [
+    { id: "s1", name: "Ronald", message: "You guys are awesome", link: null, stroke_data: null, created_at: "2026-02-16T00:00:00Z" },
+    { id: "s2", name: "Sarah", message: "Love this product!", link: null, stroke_data: null, created_at: "2026-02-15T00:00:00Z" },
+    { id: "s3", name: "Alex", message: "Super cool", link: null, stroke_data: null, created_at: "2026-02-14T00:00:00Z" },
+    { id: "s4", name: "Jordan", message: "Really impressive", link: null, stroke_data: null, created_at: "2026-02-13T00:00:00Z" },
+  ];
+  const real = entries.slice(0, 4);
+  const sampleEntries = real.length >= 4 ? real : [...real, ...placeholders.slice(real.length)];
+
   return (
-    <div className="mx-auto max-w-md">
-      <h3 style={{ color: settings.text_color, fontSize: "18px", fontWeight: 600, textAlign: "center" }}>
-        {settings.widget_title}
-      </h3>
-      <div className="mt-3 space-y-3">
-        {(entries.length > 0 ? entries.slice(0, 3) : [
-          { id: "s1", name: "Jane", message: "Amazing!", created_at: new Date().toISOString() },
-        ]).map((entry) => (
+    <>
+      {/* Title */}
+      <div style={zoneStyle("title")}>
+        <h2
+          className="text-[18px] font-bold text-center"
+          style={{ color: settings.text_color, fontFamily }}
+        >
+          {settings.widget_title}
+        </h2>
+      </div>
+      {/* Description */}
+      <div style={zoneStyle("description")}>
+        <p
+          className="text-[12px] mt-[4px] text-center"
+          style={{ color: settings.text_color, opacity: 0.7, fontFamily }}
+        >
+          {settings.widget_description}
+        </p>
+      </div>
+
+      {/* Signature cards — 2x2 grid */}
+      <div className="mt-[24px] grid grid-cols-2 gap-[12px]" style={zoneStyle("cards")}>
+        {sampleEntries.map((entry) => (
           <div
             key={entry.id}
-            style={{
-              backgroundColor: settings.card_background_color,
-              borderRadius: `${settings.card_border_radius}px`,
-              padding: "10px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
-            }}
+            className="rounded-input p-[12px] flex flex-col relative"
           >
-            <div style={{ backgroundColor: settings.canvas_background_color, borderRadius: "4px", height: "48px" }} />
-            <p style={{ color: settings.text_color, fontSize: "13px", fontWeight: 600, marginTop: "6px" }}>
-              {entry.name}
-            </p>
+            <div
+              className="absolute inset-0 rounded-input border border-border shadow-card"
+              style={{ backgroundColor: settings.card_background_color, ...cardInnerStyle("card-frame") }}
+            />
+            <div className="relative flex flex-col flex-1">
+              <div style={cardInnerStyle("card-text-only")}>
+                <p
+                  className="text-[12px]"
+                  style={{ color: settings.card_text_color, opacity: 0.7, fontFamily }}
+                >
+                  {entry.message}
+                </p>
+              </div>
+              <div className="flex items-end justify-between mt-auto pt-[8px]">
+                <div className="flex flex-col gap-[2px]" style={cardInnerStyle("card-text-only")}>
+                  <span
+                    className="text-[12px] font-medium"
+                    style={{ color: settings.card_text_color, fontFamily }}
+                  >
+                    {entry.name}
+                  </span>
+                  <span
+                    className="text-[10px]"
+                    style={{ color: settings.card_text_color, opacity: 0.7 }}
+                  >
+                    {new Date(entry.created_at).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <SignatureSample color="#000000" />
+              </div>
+            </div>
           </div>
         ))}
       </div>
-      <div className="mt-3 text-center">
+
+      {/* CTA button — in flow, not floating */}
+      <div className="mt-[24px] flex justify-center" style={zoneStyle("cta")}>
         <span
-          style={{
-            display: "inline-block",
-            padding: "8px 20px",
-            backgroundColor: settings.brand_color,
-            color: "#fff",
-            borderRadius: "9999px",
-            fontSize: "13px",
-            fontWeight: 600,
-            fontFamily,
-          }}
+          className="relative inline-flex items-center justify-center px-[20px] py-[10px] overflow-hidden"
+          style={{ borderRadius: `${settings.button_border_radius}px` }}
         >
-          {settings.cta_text}
+          {/* Button background layer */}
+          <span
+            className="absolute inset-0 shadow-card"
+            style={{
+              backgroundColor: settings.brand_color,
+              borderRadius: `${settings.button_border_radius}px`,
+              ...ctaInnerStyle("cta-frame"),
+            }}
+          />
+          {/* Button text layer */}
+          <span
+            className="relative text-[12px] font-semibold"
+            style={{ color: settings.button_text_color, fontFamily, ...ctaInnerStyle("cta-text") }}
+          >
+            {settings.cta_text || "Sign the Guestbook"}
+          </span>
         </span>
       </div>
-    </div>
+    </>
   );
 }
 
 function CollectionPreview({
   settings,
   fontFamily,
+  highlightZones,
 }: {
   settings: Required<GuestbookSettings>;
   fontFamily: string;
+  highlightZones: string[] | null;
 }) {
+  function zoneStyle(zone: string): React.CSSProperties {
+    if (!highlightZones) return { transition: "opacity 0.2s ease" };
+    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.15;
+    return {
+      opacity: highlightZones.includes(zone) ? 1 : dimOpacity,
+      transition: "opacity 0.2s ease",
+    };
+  }
+
+  function ctaInnerStyle(zone: string): React.CSSProperties {
+    if (!highlightZones || !highlightZones.includes("cta")) {
+      return { transition: "opacity 0.2s ease, transform 0.2s ease" };
+    }
+    const highlighted = highlightZones.includes(zone);
+    if (highlighted && zone === "cta-text") {
+      return {
+        transform: "scale(1.08)",
+        animation: "hl-pulse 1.2s ease-in-out infinite",
+        transition: "transform 0.2s ease",
+      };
+    }
+    // Don't dim text when frame is highlighted — button is a single visual unit
+    return { transition: "opacity 0.2s ease, transform 0.2s ease" };
+  }
+
   return (
-    <div className="mx-auto max-w-md">
-      <h2 style={{ color: settings.text_color, fontSize: "22px", fontWeight: 700, textAlign: "center" }}>
-        {settings.collection_title}
-      </h2>
-      <p style={{ color: settings.text_color, opacity: 0.7, fontSize: "14px", textAlign: "center", marginTop: "4px" }}>
-        {settings.collection_description}
-      </p>
-      <div className="mt-4 space-y-3">
-        {/* Drawing canvas placeholder */}
-        <div
-          className="flex items-center justify-center"
-          style={{
-            backgroundColor: settings.canvas_background_color,
-            borderRadius: "12px",
-            height: "120px",
-            border: "2px dashed",
-            borderColor: settings.text_color,
-            opacity: 0.3,
-          }}
-        >
-          <span style={{ color: settings.text_color, fontSize: "14px" }}>Draw your signature</span>
-        </div>
-        {/* Form fields */}
-        <input
-          readOnly
-          placeholder="Your name"
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          style={{ fontFamily }}
-        />
-        {settings.show_message_field && (
-          <textarea
-            readOnly
-            placeholder="Your message"
-            rows={2}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            style={{ fontFamily }}
+    <div className="mx-auto max-w-sm flex flex-col gap-[16px]" style={{ fontFamily }}>
+      {/* Logo + Heading + description — outside card */}
+      <div className="text-center flex flex-col items-center gap-[4px]">
+        <div style={zoneStyle("logo")}>
+          <img
+            src={settings.logo_url || "/logo.svg"}
+            alt="Logo"
+            className="w-[56px] h-[42px] object-contain"
           />
-        )}
-        <div className="text-center">
-          <span
-            style={{
-              display: "inline-block",
-              padding: "10px 24px",
-              backgroundColor: settings.brand_color,
-              color: "#fff",
-              borderRadius: "9999px",
-              fontSize: "14px",
-              fontWeight: 600,
-              fontFamily,
-            }}
+        </div>
+        <h2
+          className="text-body font-semibold"
+          style={{ ...zoneStyle("title"), color: settings.text_color }}
+        >
+          {settings.collection_title}
+        </h2>
+        {settings.collection_description && (
+          <p
+            className="text-body-sm font-medium"
+            style={{ ...zoneStyle("description"), color: settings.text_color, opacity: highlightZones ? zoneStyle("description").opacity : 0.7 }}
           >
-            {settings.cta_text}
-          </span>
+            {settings.collection_description}
+          </p>
+        )}
+      </div>
+
+      {/* Card: canvas + form fields + button */}
+      <div
+        className="bg-bg-card rounded-card border border-border shadow-card"
+        style={{ opacity: highlightZones?.includes("bg") ? 0 : 1, transition: "opacity 0.2s ease" }}
+      >
+        <div className="flex flex-col gap-[12px] p-[16px]">
+          <div style={zoneStyle("canvas")}>
+            <DrawingCanvas
+              width={300}
+              height={180}
+              brandColor={settings.brand_color}
+            />
+          </div>
+
+          <div style={zoneStyle("form")}>
+            <div className="flex flex-col gap-[12px]">
+              <Input
+                type="text"
+                readOnly
+                placeholder="Your name"
+              />
+
+              {settings.show_message_field && (
+                <textarea
+                  readOnly
+                  placeholder="Your message (optional)"
+                  rows={2}
+                  className="w-full rounded-input border border-border bg-bg-input px-[10px] py-[10px] text-body font-medium text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors resize-none"
+                />
+              )}
+
+              {settings.show_link_field && (
+                <Input
+                  type="url"
+                  readOnly
+                  placeholder="Your website (optional)"
+                />
+              )}
+            </div>
+          </div>
+
+          <div style={zoneStyle("cta")}>
+            <button
+              type="button"
+              className="flex items-center justify-center font-semibold h-[44px] w-full cursor-default"
+              style={{
+                backgroundColor: settings.brand_color,
+                borderRadius: `${settings.button_border_radius}px`,
+              }}
+            >
+              <span style={{ ...ctaInnerStyle("cta-text"), color: settings.button_text_color }}>
+                {settings.cta_text}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/* ─── Icons (from public/ SVGs, converted to currentColor) ─── */
+
+function SectionHeader({ label, first }: { label: string; first?: boolean }) {
+  return (
+    <div className={`flex items-center gap-[8px] ${first ? "mb-[16px]" : "my-[16px]"}`}>
+      <span
+        className="text-[12px] font-semibold uppercase tracking-wide text-text-placeholder"
+        style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+      >
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-border" />
+    </div>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg className="h-[16px] w-[16px] shrink-0 text-icon-inactive" viewBox="0 0 22 22" fill="currentColor">
+      <path d="M8.30138 0.296313C3.81992 1.42068 0.425446 5.28099 3.69329e-05 9.99676H5.02019C5.26223 6.52346 6.3984 3.18396 8.30138 0.296313Z" />
+      <path d="M0 12.0032C0.425259 16.7193 3.81996 20.5799 8.30171 21.7042C6.39853 18.8164 5.26224 15.4767 5.02019 12.0032H0Z" />
+      <path d="M13.6983 21.7042C18.18 20.5799 21.5747 16.7193 22 12.0032H16.9798C16.7378 15.4767 15.6015 18.8164 13.6983 21.7042Z" />
+      <path d="M22 9.99676C21.5746 5.28099 18.1801 1.42068 13.6986 0.296313C15.6016 3.18396 16.7378 6.52346 16.9798 9.99676H22Z" />
+      <path d="M11 22C8.70015 19.1445 7.31683 15.6593 7.03377 12.0032H14.9662C14.6832 15.6593 13.2998 19.1445 11 22Z" />
+      <path d="M11 0C8.70015 2.85547 7.31683 6.3407 7.03377 9.99676H14.9662C14.6832 6.3407 13.2998 2.85547 11 0Z" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M12.1831 1.3335C11.8569 1.3335 11.5338 1.39775 11.2324 1.5226C10.931 1.64744 10.6572 1.83043 10.4265 2.06111L9.55713 2.92966L13.0712 6.44366L13.9399 5.57411C14.1705 5.34348 14.3534 5.0697 14.4782 4.76839C14.6031 4.46699 14.6673 4.14395 14.6673 3.81772C14.6673 3.49149 14.6031 3.16845 14.4782 2.86705C14.3534 2.56565 14.1704 2.29179 13.9397 2.06111C13.709 1.83043 13.4352 1.64744 13.1338 1.5226C12.8324 1.39775 12.5093 1.3335 12.1831 1.3335Z" />
+      <path d="M1.52946 10.95L8.61389 3.87204L12.1288 7.38692L5.05097 14.4715C4.92592 14.5967 4.75626 14.667 4.57934 14.667H2.00065C1.63246 14.667 1.33398 14.3685 1.33398 14.0003V11.4216C1.33398 11.2447 1.40431 11.075 1.52946 10.95Z" />
+      <path d="M8.31641 13.3335C7.94822 13.3335 7.64974 13.632 7.64974 14.0002C7.64974 14.3684 7.94822 14.6668 8.31641 14.6668H14.0006C14.3688 14.6668 14.6673 14.3684 14.6673 14.0002C14.6673 13.632 14.3688 13.3335 14.0006 13.3335H8.31641Z" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
+      <path fillRule="evenodd" clipRule="evenodd" d="M1.33398 3.3335C1.33398 2.22893 2.22941 1.3335 3.33398 1.3335H10.6673C11.0355 1.3335 11.334 1.63197 11.334 2.00016C11.334 2.36835 11.0355 2.66683 10.6673 2.66683H3.33398C2.96579 2.66683 2.66732 2.96531 2.66732 3.3335V10.6668C2.66732 11.035 2.36884 11.3335 2.00065 11.3335C1.63246 11.3335 1.33398 11.035 1.33398 10.6668V3.3335Z" />
+      <path fillRule="evenodd" clipRule="evenodd" d="M4.00065 6.00016C4.00065 4.89559 4.89608 4.00016 6.00065 4.00016H12.6673C13.7719 4.00016 14.6673 4.89559 14.6673 6.00016V12.6668C14.6673 13.7714 13.7719 14.6668 12.6673 14.6668H6.00065C4.89608 14.6668 4.00065 13.7714 4.00065 12.6668V6.00016Z" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
+      <path fillRule="evenodd" clipRule="evenodd" d="M10 1.3335C9.63181 1.3335 9.33333 1.63197 9.33333 2.00016C9.33333 2.36835 9.63181 2.66683 10 2.66683H12.3905L11.012 4.04533C10.9019 4.01587 10.7861 4.00016 10.6667 4.00016H3.33333C2.97971 4.00016 2.64057 4.14064 2.39052 4.39069C2.14048 4.64074 2 4.97987 2 5.3335V12.6668C2 13.0205 2.14048 13.3596 2.39052 13.6096C2.64057 13.8597 2.97971 14.0002 3.33333 14.0002H10.6667C11.0203 14.0002 11.3594 13.8597 11.6095 13.6096C11.8595 13.3596 12 13.0205 12 12.6668V5.3335C12 5.21406 11.9843 5.09828 11.9548 4.98813L13.3333 3.60964V6.00016C13.3333 6.36835 13.6318 6.66683 14 6.66683C14.3682 6.66683 14.6667 6.36835 14.6667 6.00016V2.00016C14.6667 1.63197 14.3682 1.3335 14 1.3335H10ZM11.9548 4.98813C11.8321 4.52932 11.4708 4.16802 11.012 4.04533L6.19526 8.86209C5.93491 9.12244 5.93491 9.54455 6.19526 9.8049C6.45561 10.0653 6.87772 10.0653 7.13807 9.8049L11.9548 4.98813Z" />
+    </svg>
+  );
+}
+
+/* ─── Preview-specific icons ─── */
+
+function ExternalLink2Icon() {
+  return (
+    <svg className="h-[14px] w-[14px] shrink-0 text-icon-active" viewBox="0 0 16 16" fill="currentColor">
+      <path fillRule="evenodd" clipRule="evenodd" d="M4.66667 5.33333C4.29848 5.33333 4 5.03486 4 4.66667C4 4.29848 4.29848 4 4.66667 4H11.3333C11.7015 4 12 4.29848 12 4.66667V11.3333C12 11.7015 11.7015 12 11.3333 12C10.9651 12 10.6667 11.7015 10.6667 11.3333V6.27614L5.13807 11.8047C4.87772 12.0651 4.45561 12.0651 4.19526 11.8047C3.93491 11.5444 3.93491 11.1223 4.19526 10.8619L9.72386 5.33333H4.66667Z" />
+    </svg>
+  );
+}
+
+function GridPreviewIcon() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M2.66732 1.3335C1.93094 1.3335 1.33398 1.93045 1.33398 2.66683V6.00016C1.33398 6.73654 1.93094 7.3335 2.66732 7.3335H6.00065C6.73703 7.3335 7.33398 6.73654 7.33398 6.00016V2.66683C7.33398 1.93045 6.73703 1.3335 6.00065 1.3335H2.66732Z" />
+      <path d="M10.0007 1.3335C9.26427 1.3335 8.66732 1.93045 8.66732 2.66683V6.00016C8.66732 6.73654 9.26427 7.3335 10.0007 7.3335H13.334C14.0704 7.3335 14.6673 6.73654 14.6673 6.00016V2.66683C14.6673 1.93045 14.0704 1.3335 13.334 1.3335H10.0007Z" />
+      <path d="M2.66732 8.66683C1.93094 8.66683 1.33398 9.26378 1.33398 10.0002V13.3335C1.33398 14.0699 1.93094 14.6668 2.66732 14.6668H6.00065C6.73703 14.6668 7.33398 14.0699 7.33398 13.3335V10.0002C7.33398 9.26378 6.73703 8.66683 6.00065 8.66683H2.66732Z" />
+      <path d="M10.0007 8.66683C9.26427 8.66683 8.66732 9.26378 8.66732 10.0002V13.3335C8.66732 14.0699 9.26427 14.6668 10.0007 14.6668H13.334C14.0704 14.6668 14.6673 14.0699 14.6673 13.3335V10.0002C14.6673 9.26378 14.0704 8.66683 13.334 8.66683H10.0007Z" />
+    </svg>
+  );
+}
+
+function SignatureSample({ color }: { color: string }) {
+  return (
+    <svg className="h-[48px] w-[32px]" viewBox="0 0 42 63" fill="none">
+      <path d="M1 31.3618C2.76123 28.6672 5.38716 20.4247 4.94959 8.6698C4.80134 4.68741 3.90876 2.17915 3.4144 1.65592C-1.72304 -3.78153 6.0098 25.5164 7.15353 55.1465C7.35921 60.4748 6.83547 61.6437 6.20364 61.9306C5.57181 62.2174 4.60156 61.5907 3.80265 60.5009C2.04412 58.1019 1.9624 54.5844 2.6827 50.9848C4.28251 42.9898 9.48864 39.4278 13.4417 36.9359C17.3352 34.4814 23.0119 35.1459 28.0535 34.1892C32.5082 33.3438 34.7166 27.955 38.3961 24.5107C39.2415 23.4891 39.8855 22.1986 40.2917 22.2232C40.6978 22.2478 40.8467 23.6266 41 25.0471" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CanvasPreviewIcon() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M5.00065 1.3335H3.33398C2.22941 1.3335 1.33398 2.22893 1.33398 3.3335V5.00016H5.00065V1.3335Z" />
+      <path d="M1.33398 6.3335V9.66683L5.00065 9.66683V6.3335H1.33398Z" />
+      <path d="M1.33398 11.0002V12.6668C1.33398 13.7714 2.22941 14.6668 3.33398 14.6668H5.00065V11.0002L1.33398 11.0002Z" />
+      <path d="M6.33398 14.6668H9.66732V11.0002L6.33398 11.0002V14.6668Z" />
+      <path d="M11.0007 14.6668H12.6673C13.7719 14.6668 14.6673 13.7714 14.6673 12.6668V11.0002H11.0007V14.6668Z" />
+      <path d="M14.6673 9.66683V6.3335H11.0007V9.66683H14.6673Z" />
+      <path d="M14.6673 5.00016V3.3335C14.6673 2.22893 13.7719 1.3335 12.6673 1.3335H11.0007V5.00016H14.6673Z" />
+      <path d="M9.66732 1.3335H6.33398V5.00016L9.66732 5.00016V1.3335Z" />
+      <path d="M6.33398 9.66683V6.3335L9.66732 6.3335V9.66683L6.33398 9.66683Z" />
+    </svg>
   );
 }

@@ -1,1 +1,63 @@
 @import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-bg-page: #FBFBFB;
+  --color-bg-card: #FFFFFF;
+  --color-bg-input: #F6F6F6;
+  --color-bg-subtle: #F2F2F2;
+
+  --color-border: #EAEAEA;
+
+  --color-accent: #9580FF;
+  --color-accent-hover: #8570EE;
+  --color-accent-active: #7A65E0;
+  --color-accent-disabled: #C4B8FF;
+
+  --color-bg-nav: #14141F;
+
+  --color-text-primary: #14141F;
+  --color-text-secondary: #656565;
+  --color-text-placeholder: #949494;
+
+  --color-icon-active: #18251E;
+  --color-icon-inactive: #999999;
+
+  --color-success-bg: #CDF6DC;
+  --color-success-text: #00812D;
+  --color-error-bg: #FFD5D8;
+  --color-error-text: #CE2B2F;
+  --color-warning-bg: #FDEECC;
+  --color-warning-text: #5D501E;
+
+  /* Shadows */
+  --shadow-card: 0px 3px 3px 0px rgba(0, 0, 0, 0.06),
+    0px 1px 1px 0px rgba(0, 0, 0, 0.06),
+    0px 0px 1px 0px rgba(0, 0, 0, 0.06);
+  --shadow-card-sm: 0px 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+    0px 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0px 0px 1px 0px rgba(0, 0, 0, 0.06);
+  --shadow-inset: inset 0px 0.5px 1px 0px rgba(0, 0, 0, 0.1);
+
+  /* Border Radius */
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --radius-sm: 10px;
+  --radius-icon: 8px;
+
+  /* Font Sizes */
+  --text-heading: 40px;
+  --text-subheading: 20px;
+  --text-body: 16px;
+  --text-body-sm: 14px;
+}
+
+@keyframes hl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -31,27 +31,27 @@ export function ProfileDropdown({ email }: { email: string }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-medium text-neutral-700 hover:bg-neutral-300"
+        className="flex h-[36px] w-[36px] items-center justify-center rounded-full bg-bg-subtle text-body-sm font-medium text-text-secondary cursor-pointer hover:bg-bg-input"
         title={email}
       >
         {initials}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
-          <div className="border-b border-neutral-100 px-3 py-2">
-            <p className="truncate text-sm font-medium text-neutral-900">{email}</p>
+        <div className="absolute right-0 top-full z-50 mt-[8px] w-[220px] rounded-input border border-border bg-bg-card py-[4px] shadow-card">
+          <div className="border-b border-border px-[12px] py-[8px]">
+            <p className="truncate text-body-sm font-medium text-text-primary">{email}</p>
           </div>
           <Link
             href="/billing"
             onClick={() => setOpen(false)}
-            className="flex w-full items-center px-3 py-2 text-left text-sm text-neutral-600 hover:bg-neutral-50"
+            className="flex w-full items-center px-[12px] py-[8px] text-left text-body-sm text-text-secondary hover:bg-bg-subtle"
           >
             Billing
           </Link>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center px-3 py-2 text-left text-sm text-neutral-600 hover:bg-neutral-50"
+            className="flex w-full items-center px-[12px] py-[8px] text-left text-body-sm text-text-secondary cursor-pointer hover:bg-bg-subtle"
           >
             Log out
           </button>

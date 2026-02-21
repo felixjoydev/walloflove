@@ -149,7 +149,7 @@ export async function POST(
   );
   if (!success) {
     return NextResponse.json(
-      { error: "Too many submissions. Try again later." },
+      { error: "You can only submit 3 entries per hour. Please try again later." },
       { status: 429, headers: corsHeaders() }
     );
   }

@@ -8,6 +8,7 @@ import {
   bulkUpdateAction,
   deleteEntryAction,
 } from "./actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 interface Entry {
   id: string;
@@ -218,17 +219,17 @@ export function EntriesTable({
                   )}
                 </td>
                 <td className="py-3 pr-3">
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                  <StatusBadge
+                    variant={
                       entry.status === "approved"
-                        ? "bg-green-100 text-green-700"
+                        ? "success"
                         : entry.status === "rejected"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-yellow-100 text-yellow-700"
-                    }`}
+                          ? "error"
+                          : "warning"
+                    }
                   >
                     {entry.status}
-                  </span>
+                  </StatusBadge>
                 </td>
                 <td className="py-3 pr-3 text-neutral-500">
                   {new Date(entry.created_at).toLocaleDateString("en-US", {
