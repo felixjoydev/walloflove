@@ -20,7 +20,7 @@ import {
   getSubscription,
   getUserPlan,
 } from "@/lib/repositories/subscription.repo";
-import { getEntryLimit, PLANS } from "@/lib/stripe/config";
+import { getEntryLimit } from "@/lib/stripe/config";
 
 function corsHeaders() {
   return {
@@ -210,10 +210,7 @@ export async function POST(
   }
 
   // Determine status based on moderation mode
-  const moderationMode = PLANS[plan].moderation
-    ? settings.moderation_mode
-    : "auto_approve";
-  const status = moderationMode === "auto_approve" ? "approved" : "pending";
+  const status = settings.moderation_mode === "auto_approve" ? "approved" : "pending";
 
   try {
     const entry = await createEntry(supabaseAdmin, {

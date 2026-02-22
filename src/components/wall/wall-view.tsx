@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 import type { GuestbookSettings } from "@shared/types";
 import type { DrawingData } from "@shared/types/drawing";
 import { WallNavbar } from "./wall-navbar";
@@ -133,6 +134,88 @@ export function WallView({
       loadAllForCanvas();
     }
   }, [viewMode, canvasLoaded, loadAllForCanvas]);
+
+  // Supabase Realtime + polling fallback for approved entries
+  const canvasLoadedRef = useRef(canvasLoaded);
+  useEffect(() => {
+    canvasLoadedRef.current = canvasLoaded;
+  }, [canvasLoaded]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const apiUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+
+    // Sync grid/canvas state with fresh API data. Fresh entries replace
+    // existing ones (fixes stale stroke_data). Entries not in fresh
+    // (e.g. rejected/deleted since last poll) are removed.
+    const syncEntries = (fresh: Entry[]) => {
+      setGridEntries(fresh);
+      if (canvasLoadedRef.current) {
+        setCanvasEntries((prev) => {
+          const freshMap = new Map(fresh.map((e) => [e.id, e]));
+          // Keep canvas entries that aren't in the first page of results
+          const extra = prev.filter((e) => !freshMap.has(e.id));
+          return [...fresh, ...extra];
+        });
+      }
+    };
+
+    // Poll via the API route — uses supabaseAdmin (service role), so the
+    // data format is identical to the server render. This avoids
+    // browser-client RLS/TOAST serialization issues with stroke_data.
+    let polling = false;
+    const poll = async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const res = await fetch(
+          `${apiUrl}/api/v1/guestbooks/${guestbook.id}/entries`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.entries) syncEntries(data.entries as Entry[]);
+      } finally {
+        polling = false;
+      }
+    };
+
+    // Realtime — used only as a trigger for an immediate poll (fast path)
+    // and for instant DELETE handling. Data always comes from the API route.
+    const channel = supabase
+      .channel(`wall:${guestbook.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "entries",
+          filter: `guestbook_id=eq.${guestbook.id}`,
+        },
+        (payload) => {
+          if (
+            payload.eventType === "INSERT" ||
+            payload.eventType === "UPDATE"
+          ) {
+            poll();
+          } else if (payload.eventType === "DELETE") {
+            const id = (payload.old as { id: string }).id;
+            setGridEntries((prev) => prev.filter((e) => e.id !== id));
+            if (canvasLoadedRef.current) {
+              setCanvasEntries((prev) => prev.filter((e) => e.id !== id));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    const interval = setInterval(poll, 5000);
+    poll(); // Run immediately on mount
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [guestbook.id]);
 
   return (
     <div

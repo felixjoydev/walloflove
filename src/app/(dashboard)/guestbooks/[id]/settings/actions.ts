@@ -8,11 +8,6 @@ import {
   updateGuestbookName,
   updateGuestbookSlug,
 } from "@/lib/repositories/guestbook.repo";
-import {
-  getSubscription,
-  getUserPlan,
-} from "@/lib/repositories/subscription.repo";
-import { PLANS } from "@/lib/stripe/config";
 import type { GuestbookSettings } from "@shared/types";
 
 // Allowlist of valid settings keys to prevent arbitrary JSONB injection
@@ -69,15 +64,6 @@ export async function saveSettingsAction(
 
   try {
     const sanitized = sanitizeSettings(settings);
-
-    const subscription = await getSubscription(supabase, user.id);
-    const plan = getUserPlan(subscription);
-    if (
-      sanitized.moderation_mode === "manual_approve" &&
-      !PLANS[plan].moderation
-    ) {
-      return { error: "Manual moderation requires a paid plan" };
-    }
 
     await updateGuestbookSettings(supabase, guestbookId, sanitized);
     return { error: null };

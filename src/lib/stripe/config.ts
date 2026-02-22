@@ -10,11 +10,11 @@ interface PlanConfig {
 
 export const PLANS = {
   free: {
-    guestbooks: 1,
-    entries: 50,
-    branding: true,
-    moderation: false,
-    fullTheme: false,
+    guestbooks: -1,
+    entries: Infinity,
+    branding: false,
+    moderation: true,
+    fullTheme: true,
   },
   starter: {
     guestbooks: 3,

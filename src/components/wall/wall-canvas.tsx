@@ -305,8 +305,8 @@ export function WallCanvas({
           <div className="absolute inset-0 bg-black/30" />
           {/* Card */}
           <div
-            className="relative w-[320px] rounded-card border border-border shadow-card p-[16px]"
-            style={{ backgroundColor: settings.card_background_color }}
+            className="relative w-[320px] rounded-card border shadow-card p-[16px]"
+            style={{ backgroundColor: settings.card_background_color, borderColor: settings.card_border_color }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Signature */}

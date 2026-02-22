@@ -30,6 +30,9 @@
   --color-warning-bg: #FDEECC;
   --color-warning-text: #5D501E;
 
+  --color-approve: #22C55E;
+  --color-reject: #EF4444;
+
   /* Shadows */
   --shadow-card: 0px 3px 3px 0px rgba(0, 0, 0, 0.06),
     0px 1px 1px 0px rgba(0, 0, 0, 0.06),

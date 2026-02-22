@@ -25,6 +25,7 @@ export interface GuestbookSettings {
   website_link?: string;
   button_text_color?: string;
   button_border_radius?: number;
+  card_border_color?: string;
 }
 
 export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
@@ -36,7 +37,7 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   font: "sans",
   card_border_radius: 12,
   canvas_background_color: "#F6F6F6",
-  moderation_mode: "auto_approve",
+  moderation_mode: "manual_approve",
   cta_text: "Sign the Guestbook",
   max_entries_displayed: 50,
   show_link_field: true,
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   website_link: "",
   button_text_color: "#ffffff",
   button_border_radius: 9999,
+  card_border_color: "#EAEAEA",
 } as const;
 
 export function mergeSettings(

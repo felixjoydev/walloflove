@@ -1,5 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { SignatureSvg } from "@/components/wall/signature-svg";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ActionButton } from "@/components/ui/action-button";
+import { Checkbox } from "@/components/ui/checkbox";
+
 interface Entry {
   id: string;
   name: string;
@@ -9,6 +15,14 @@ interface Entry {
   status: string;
   created_at: string;
 }
+
+function statusBadgeVariant(status: string) {
+  if (status === "approved") return "success" as const;
+  if (status === "rejected") return "error" as const;
+  return "warning" as const;
+}
+
+const MAX_MESSAGE_LENGTH = 140;
 
 export function InboxGrid({
   entries,
@@ -25,111 +39,226 @@ export function InboxGrid({
   onDelete: (id: string) => void;
   acting: boolean;
 }) {
+  const [modalEntry, setModalEntry] = useState<Entry | null>(null);
+
   return (
-    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {entries.map((entry) => (
+    <>
+      <div className="mt-[16px] pb-[40px] grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+        {entries.map((entry) => {
+          const isTruncated = !!entry.message && entry.message.length > MAX_MESSAGE_LENGTH;
+
+          return (
+            <div
+              key={entry.id}
+              className="rounded-input border border-border bg-bg-page shadow-card flex flex-col"
+            >
+              {/* Inner white card — content (flipped double card: content on top, actions on bottom) */}
+              <div className="rounded-t-input rounded-b-input border-b border-border bg-bg-card flex-1">
+                <div className="p-[16px] flex flex-col">
+                  {/* Signature area */}
+                  <SignatureSvg
+                    strokeData={entry.stroke_data}
+                    className="w-full h-[120px] [&>svg]:w-full [&>svg]:h-full"
+                    style={{
+                      backgroundColor: "#F6F6F6",
+                      backgroundImage:
+                        "radial-gradient(circle, rgba(0, 0, 0, 0.06) 1px, transparent 1px)",
+                      backgroundSize: "14px 14px",
+                      borderRadius: "8px",
+                    }}
+                  />
+
+                  {/* Message — truncated to 140 chars with "More" link */}
+                  {entry.message && (
+                    <p className="text-body-sm mt-[12px] text-text-primary opacity-70">
+                      {isTruncated
+                        ? entry.message.slice(0, MAX_MESSAGE_LENGTH) + "... "
+                        : entry.message}
+                      {isTruncated && (
+                        <button
+                          type="button"
+                          onClick={() => setModalEntry(entry)}
+                          className="text-accent font-medium cursor-pointer hover:text-accent-hover transition-colors"
+                        >
+                          More
+                        </button>
+                      )}
+                    </p>
+                  )}
+
+                  {/* Name + date */}
+                  <div className="flex flex-col gap-[2px] mt-[12px]">
+                    <span className="text-body-sm font-medium text-text-primary">
+                      {entry.name}
+                    </span>
+                    <span className="text-[12px] text-text-secondary">
+                      {new Date(entry.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+
+                  {/* Link */}
+                  {entry.link && (
+                    <a
+                      href={entry.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-[6px] mt-[8px] text-[12px] text-text-secondary hover:text-text-primary transition-colors truncate"
+                      title={entry.link}
+                    >
+                      <span className="truncate">{entry.link}</span>
+                      <ExternalLinkIcon />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom bar — checkbox + status badge + action buttons */}
+              <div className="flex items-center justify-between px-[12px] pt-[8px] pb-[10px]">
+                <div className="flex items-center gap-[8px]">
+                  <Checkbox
+                    variant="white"
+                    checked={selected.has(entry.id)}
+                    onChange={() => onToggle(entry.id)}
+                  />
+                  <StatusBadge variant={statusBadgeVariant(entry.status)}>
+                    {entry.status.toUpperCase()}
+                  </StatusBadge>
+                </div>
+                <div className="flex items-center gap-[8px]">
+                  {entry.status !== "rejected" && (
+                    <ActionButton
+                      variant="reject"
+                      onClick={() => onStatus(entry.id, "rejected")}
+                      disabled={acting}
+                    />
+                  )}
+                  {entry.status !== "approved" && (
+                    <ActionButton
+                      variant="approve"
+                      onClick={() => onStatus(entry.id, "approved")}
+                      disabled={acting}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Entry detail modal */}
+      {modalEntry && (
         <div
-          key={entry.id}
-          className={`relative rounded-xl border p-4 transition-colors ${
-            selected.has(entry.id)
-              ? "border-neutral-900 bg-neutral-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
-          }`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setModalEntry(null)}
         >
-          {/* Checkbox */}
-          <input
-            type="checkbox"
-            checked={selected.has(entry.id)}
-            onChange={() => onToggle(entry.id)}
-            className="absolute right-3 top-3 rounded border-neutral-300"
-          />
+          <div
+            className="w-full max-w-[480px] mx-[16px] rounded-card border border-border bg-bg-card shadow-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-[24px] flex flex-col">
+              {/* Signature */}
+              <SignatureSvg
+                strokeData={modalEntry.stroke_data}
+                className="w-full h-[180px] [&>svg]:w-full [&>svg]:h-full"
+                style={{
+                  backgroundColor: "#F6F6F6",
+                  backgroundImage:
+                    "radial-gradient(circle, rgba(0, 0, 0, 0.06) 1px, transparent 1px)",
+                  backgroundSize: "14px 14px",
+                  borderRadius: "8px",
+                }}
+              />
 
-          {/* Signature thumbnail */}
-          <div className="mb-3 h-20 rounded-lg bg-neutral-100" />
+              {/* Full message */}
+              {modalEntry.message && (
+                <p className="text-body mt-[16px] text-text-primary opacity-70">
+                  {modalEntry.message}
+                </p>
+              )}
 
-          {/* Name & date */}
-          <p className="text-sm font-medium">{entry.name}</p>
-          <p className="mt-0.5 text-xs text-neutral-400">
-            {new Date(entry.created_at).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-          </p>
+              {/* Name + date */}
+              <div className="flex flex-col gap-[2px] mt-[16px]">
+                <span className="text-body font-medium text-text-primary">
+                  {modalEntry.name}
+                </span>
+                <span className="text-body-sm text-text-secondary">
+                  {new Date(modalEntry.created_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
 
-          {/* Message */}
-          {entry.message && (
-            <p className="mt-2 text-sm text-neutral-600 line-clamp-2">{entry.message}</p>
-          )}
+              {/* Link */}
+              {modalEntry.link && (
+                <a
+                  href={modalEntry.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-[6px] mt-[8px] text-body-sm text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  <span className="truncate">{modalEntry.link}</span>
+                  <ExternalLinkIcon />
+                </a>
+              )}
 
-          {/* Link */}
-          {entry.link && (
-            <a
-              href={entry.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 block text-xs text-indigo-600 hover:underline truncate"
-            >
-              {entry.link}
-            </a>
-          )}
+              {/* Status + actions */}
+              <div className="flex items-center justify-between mt-[20px] pt-[16px] border-t border-border">
+                <StatusBadge variant={statusBadgeVariant(modalEntry.status)}>
+                  {modalEntry.status.toUpperCase()}
+                </StatusBadge>
+                <div className="flex items-center gap-[8px]">
+                  {modalEntry.status !== "rejected" && (
+                    <ActionButton
+                      variant="reject"
+                      onClick={() => {
+                        onStatus(modalEntry.id, "rejected");
+                        setModalEntry(null);
+                      }}
+                      disabled={acting}
+                    />
+                  )}
+                  {modalEntry.status !== "approved" && (
+                    <ActionButton
+                      variant="approve"
+                      onClick={() => {
+                        onStatus(modalEntry.id, "approved");
+                        setModalEntry(null);
+                      }}
+                      disabled={acting}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
 
-          {/* Actions */}
-          <div className="mt-3 flex items-center gap-1 border-t border-neutral-100 pt-3">
-            {entry.status !== "approved" && (
-              <button
-                onClick={() => onStatus(entry.id, "approved")}
-                disabled={acting}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-green-600 hover:bg-green-50 disabled:opacity-50"
-                title="Approve"
-              >
-                <CheckIcon />
-              </button>
-            )}
-            {entry.status !== "rejected" && (
-              <button
-                onClick={() => onStatus(entry.id, "rejected")}
-                disabled={acting}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-red-600 hover:bg-red-50 disabled:opacity-50"
-                title="Reject"
-              >
-                <XIcon />
-              </button>
-            )}
+            {/* Close button */}
             <button
-              onClick={() => onDelete(entry.id)}
-              disabled={acting}
-              className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-50 disabled:opacity-50"
-              title="Delete"
+              type="button"
+              onClick={() => setModalEntry(null)}
+              className="absolute top-[12px] right-[12px] w-[32px] h-[32px] flex items-center justify-center rounded-icon text-text-placeholder hover:text-text-primary transition-colors cursor-pointer"
             >
-              <TrashIcon />
+              <svg className="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="currentColor">
+                <path fillRule="evenodd" clipRule="evenodd" d="M3.52925 3.52876C3.7896 3.26841 4.21171 3.26841 4.47206 3.52876L8.00065 7.05735L11.5292 3.52876C11.7896 3.26841 12.2117 3.26841 12.4721 3.52876C12.7324 3.78911 12.7324 4.21122 12.4721 4.47157L8.94346 8.00016L12.4721 11.5288C12.7324 11.7891 12.7324 12.2112 12.4721 12.4716C12.2117 12.7319 11.7896 12.7319 11.5292 12.4716L8.00065 8.94297L4.47206 12.4716C4.21171 12.7319 3.7896 12.7319 3.52925 12.4716C3.2689 12.2112 3.2689 11.7891 3.52925 11.5288L7.05784 8.00016L3.52925 4.47157C3.2689 4.21122 3.2689 3.78911 3.52925 3.52876Z" />
+              </svg>
             </button>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
 
-function CheckIcon() {
+function ExternalLinkIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+    <svg className="h-[12px] w-[12px] shrink-0" viewBox="0 0 16 16" fill="currentColor">
+      <path fillRule="evenodd" clipRule="evenodd" d="M4.66667 5.33333C4.29848 5.33333 4 5.03486 4 4.66667C4 4.29848 4.29848 4 4.66667 4H11.3333C11.7015 4 12 4.29848 12 4.66667V11.3333C12 11.7015 11.7015 12 11.3333 12C10.9651 12 10.6667 11.7015 10.6667 11.3333V6.27614L5.13807 11.8047C4.87772 12.0651 4.45561 12.0651 4.19526 11.8047C3.93491 11.5444 3.93491 11.1223 4.19526 10.8619L9.72386 5.33333H4.66667Z" />
     </svg>
   );
 }

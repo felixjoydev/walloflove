@@ -78,9 +78,10 @@ export function WallGrid({
           >
             {/* Card background */}
             <div
-              className="absolute inset-0 border border-border"
+              className="absolute inset-0 border"
               style={{
                 backgroundColor: settings.card_background_color,
+                borderColor: settings.card_border_color,
                 borderRadius: `${settings.card_border_radius}px`,
                 boxShadow:
                   "0px 3px 3px 0px rgba(0, 0, 0, 0.06), 0px 1px 1px 0px rgba(0, 0, 0, 0.06), 0px 0px 1px 0px rgba(0, 0, 0, 0.06)",

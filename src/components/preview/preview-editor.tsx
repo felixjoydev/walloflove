@@ -154,6 +154,7 @@ export function PreviewEditor({
     "title-color": ["title", "description"],
     "card-bg": ["cards", "card-frame"],
     "card-text": ["cards", "card-text-only"],
+    "card-border": ["cards", "card-border"],
   };
 
   const activeZones = hoveredField && hoveredField !== editingField ? (FIELD_ZONES[hoveredField] ?? null) : null;
@@ -405,6 +406,14 @@ export function PreviewEditor({
                     pickerPosition="top"
                   />
                 </div>
+                <div {...hlWrap("card-border")}>
+                  <SettingsColorField
+                    label="Card Border Color"
+                    value={settings.card_border_color}
+                    onChange={(c) => update("card_border_color", c)}
+                    pickerPosition="top"
+                  />
+                </div>
               </>
             )}
           </div>
@@ -540,11 +549,9 @@ function WallPreview({
     { id: "s2", name: "Sarah", message: "Love this product!", link: null, stroke_data: null, created_at: "2026-02-15T00:00:00Z" },
     { id: "s3", name: "Alex", message: "Super cool", link: null, stroke_data: null, created_at: "2026-02-14T00:00:00Z" },
     { id: "s4", name: "Jordan", message: "Really impressive", link: null, stroke_data: null, created_at: "2026-02-13T00:00:00Z" },
-    { id: "s5", name: "Taylor", message: "Keep it up!", link: null, stroke_data: null, created_at: "2026-02-12T00:00:00Z" },
-    { id: "s6", name: "Morgan", message: "Fantastic work", link: null, stroke_data: null, created_at: "2026-02-11T00:00:00Z" },
   ];
-  const real = entries.slice(0, 6);
-  const sampleEntries = real.length >= 6 ? real : [...real, ...placeholders.slice(real.length)];
+  const real = entries.slice(0, 4);
+  const sampleEntries = real.length >= 4 ? real : [...real, ...placeholders.slice(real.length)];
 
   /* ── Canvas view state ── */
   const CELL_W = 100;
@@ -710,10 +717,15 @@ function WallPreview({
                 className="flex flex-col relative overflow-hidden"
                 style={{ borderRadius: `${settings.card_border_radius}px`, paddingTop: "10px", paddingRight: "10px", paddingBottom: "10px", paddingLeft: "28px" }}
               >
-                {/* Background layer (bg + border + shadow) — dims independently */}
+                {/* Background layer — dims independently */}
                 <div
-                  className="absolute inset-0 border border-border shadow-card"
+                  className="absolute inset-0 shadow-card"
                   style={{ backgroundColor: settings.card_background_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-frame") }}
+                />
+                {/* Border layer — dims independently */}
+                <div
+                  className="absolute inset-0 border"
+                  style={{ borderColor: settings.card_border_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-border") }}
                 />
                 {/* Notebook punch holes */}
                 <div className="absolute left-[6px] top-[8px] bottom-[8px] flex flex-col items-center justify-between pointer-events-none">
@@ -985,8 +997,12 @@ function WidgetPreview({
             className="rounded-input p-[12px] flex flex-col relative"
           >
             <div
-              className="absolute inset-0 rounded-input border border-border shadow-card"
+              className="absolute inset-0 rounded-input shadow-card"
               style={{ backgroundColor: settings.card_background_color, ...cardInnerStyle("card-frame") }}
+            />
+            <div
+              className="absolute inset-0 rounded-input border"
+              style={{ borderColor: settings.card_border_color, ...cardInnerStyle("card-border") }}
             />
             <div className="relative flex flex-col flex-1">
               <div style={cardInnerStyle("card-text-only")}>
