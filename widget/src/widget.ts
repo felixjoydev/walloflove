@@ -104,7 +104,9 @@ class SignBoardWidget {
         ? "monospace"
         : "system-ui, sans-serif"
     );
-    this.#root.style.backgroundColor = settings.background_color;
+    this.#root.style.backgroundColor = settings.widget_transparent_bg
+      ? "transparent"
+      : settings.background_color;
 
     // Wall container
     this.#wallContainer = document.createElement("div");

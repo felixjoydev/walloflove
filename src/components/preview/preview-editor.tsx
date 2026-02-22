@@ -378,7 +378,26 @@ export function PreviewEditor({
               <SettingsColorField
                 label="Background color"
                 value={settings.background_color}
-                onChange={(c) => update("background_color", c)}
+                onChange={(c) => {
+                  update("background_color", c);
+                  if (tab === "widget" && settings.widget_transparent_bg) {
+                    update("widget_transparent_bg", false);
+                  }
+                }}
+                showStrike={tab === "widget" && settings.widget_transparent_bg}
+                trailing={tab === "widget" ? (
+                  <button
+                    type="button"
+                    onClick={() => update("widget_transparent_bg", !settings.widget_transparent_bg)}
+                    className={`flex items-center gap-[6px] px-[8px] py-[4px] rounded-icon text-[11px] font-medium cursor-pointer transition-colors ${
+                      settings.widget_transparent_bg
+                        ? "bg-approve text-white"
+                        : "bg-bg-subtle text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    Transparent
+                  </button>
+                ) : undefined}
               />
             </div>
             <div {...hlWrap("title-color")}>
@@ -442,7 +461,15 @@ export function PreviewEditor({
           )}
           <div
             className={`rounded-card border border-border bg-bg-card shadow-card p-[20px] relative overflow-hidden ${tab !== "widget" ? "min-h-[480px]" : ""}`}
-            style={{ backgroundColor: tab === "collection" ? "#FBFBFB" : settings.background_color, fontFamily }}
+            style={{
+              backgroundColor: tab === "collection" ? "#FBFBFB" : (tab === "widget" && settings.widget_transparent_bg) ? "transparent" : settings.background_color,
+              backgroundImage: (tab === "widget" && settings.widget_transparent_bg)
+                ? "linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)"
+                : undefined,
+              backgroundSize: (tab === "widget" && settings.widget_transparent_bg) ? "16px 16px" : undefined,
+              backgroundPosition: (tab === "widget" && settings.widget_transparent_bg) ? "0 0, 0 8px, 8px -8px, -8px 0px" : undefined,
+              fontFamily,
+            }}
           >
             {tab === "wall" && (
               <WallPreview settings={settings} entries={entries} fontFamily={fontFamily} wallUrl={wallUrl} highlightZones={hasActiveHighlight ? activeZones : null} />
@@ -915,6 +942,28 @@ function WallPreview({
   );
 }
 
+/* ─── Punch-hole CSS mask (used when widget background is transparent) ─── */
+const punchHoleMask: React.CSSProperties = (() => {
+  const g = (y: string) =>
+    `radial-gradient(circle 5px at 11px ${y}, transparent 5px, black 5px)`;
+  const img = [
+    g("13px"),
+    g("calc(13px + (100% - 26px) * 0.2)"),
+    g("calc(13px + (100% - 26px) * 0.4)"),
+    g("calc(13px + (100% - 26px) * 0.6)"),
+    g("calc(13px + (100% - 26px) * 0.8)"),
+    g("calc(100% - 13px)"),
+  ].join(", ");
+  const comp = Array(5).fill("intersect").join(", ");
+  const wComp = Array(5).fill("destination-in").join(", ");
+  return {
+    maskImage: img,
+    WebkitMaskImage: img,
+    maskComposite: comp,
+    WebkitMaskComposite: wComp,
+  } as React.CSSProperties;
+})();
+
 function WidgetPreview({
   settings,
   entries,
@@ -1000,79 +1049,101 @@ function WidgetPreview({
         {sampleEntries.map((entry) => (
           <div
             key={entry.id}
-            className="flex flex-col relative overflow-hidden"
-            style={{ borderRadius: `${settings.card_border_radius}px`, paddingTop: "10px", paddingRight: "10px", paddingBottom: "10px", paddingLeft: "28px" }}
+            className="relative overflow-hidden"
+            style={{ borderRadius: `${settings.card_border_radius}px` }}
           >
-            {/* Background layer */}
             <div
-              className="absolute inset-0 shadow-card"
-              style={{ backgroundColor: settings.card_background_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-frame") }}
-            />
-            {/* Border layer */}
-            <div
-              className="absolute inset-0 border"
-              style={{ borderColor: settings.card_border_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-border") }}
-            />
-            {/* Notebook punch holes */}
-            <div className="absolute left-[6px] top-[8px] bottom-[8px] flex flex-col items-center justify-between pointer-events-none">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-[10px] h-[10px] rounded-full"
-                  style={{
-                    backgroundColor: settings.background_color,
-                    boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.15) inset",
-                  }}
-                />
-              ))}
-            </div>
-            {/* Content layer */}
-            <div className="relative flex flex-col flex-1">
-              {/* Doodle area with dots */}
+              className="flex flex-col relative"
+              style={{
+                paddingTop: "10px", paddingRight: "10px", paddingBottom: "10px", paddingLeft: "28px",
+                ...(settings.widget_transparent_bg ? punchHoleMask : {}),
+              }}
+            >
+              {/* Background layer */}
               <div
-                className="w-full h-[60px] flex items-center justify-center"
-                style={{
-                  backgroundColor: settings.canvas_background_color,
-                  backgroundImage: `radial-gradient(circle, ${getDotColor(settings.background_color)} 1px, transparent 1px)`,
-                  backgroundSize: "14px 14px",
-                  borderRadius: "6px",
-                  ...cardInnerStyle("card-doodle"),
-                }}
-              >
-                <SignatureSample color="#000000" />
-              </div>
-              {/* Text content */}
-              <div className="flex flex-col flex-1" style={cardInnerStyle("card-text-only")}>
-                {entry.message && (
-                  <p
-                    className="text-[10px] mt-[8px]"
-                    style={{ color: settings.card_text_color, opacity: 0.7, fontFamily }}
-                  >
-                    {entry.message}
-                  </p>
-                )}
-                <div className="flex items-end justify-between mt-auto pt-[8px]">
-                  <div className="flex flex-col gap-[2px]">
-                    <span
-                      className="text-[10px] font-medium"
-                      style={{ color: settings.card_text_color, fontFamily }}
+                className="absolute inset-0 shadow-card"
+                style={{ backgroundColor: settings.card_background_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-frame") }}
+              />
+              {/* Border layer */}
+              <div
+                className="absolute inset-0 border"
+                style={{ borderColor: settings.card_border_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-border") }}
+              />
+              {/* Notebook punch holes (solid color — only when not transparent) */}
+              {!settings.widget_transparent_bg && (
+                <div className="absolute left-[6px] top-[8px] bottom-[8px] flex flex-col items-center justify-between pointer-events-none">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-[10px] h-[10px] rounded-full"
+                      style={{
+                        backgroundColor: settings.background_color,
+                        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.15) inset",
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {/* Content layer */}
+              <div className="relative flex flex-col flex-1">
+                {/* Doodle area with dots */}
+                <div
+                  className="w-full h-[60px] flex items-center justify-center"
+                  style={{
+                    backgroundColor: settings.canvas_background_color,
+                    backgroundImage: `radial-gradient(circle, ${getDotColor(settings.background_color)} 1px, transparent 1px)`,
+                    backgroundSize: "14px 14px",
+                    borderRadius: "6px",
+                    ...cardInnerStyle("card-doodle"),
+                  }}
+                >
+                  <SignatureSample color="#000000" />
+                </div>
+                {/* Text content */}
+                <div className="flex flex-col flex-1" style={cardInnerStyle("card-text-only")}>
+                  {entry.message && (
+                    <p
+                      className="text-[10px] mt-[8px]"
+                      style={{ color: settings.card_text_color, opacity: 0.7, fontFamily }}
                     >
-                      {entry.name}
-                    </span>
-                    <span
-                      className="text-[8px]"
-                      style={{ color: settings.card_text_color, opacity: 0.5 }}
-                    >
-                      {new Date(entry.created_at).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
+                      {entry.message}
+                    </p>
+                  )}
+                  <div className="flex items-end justify-between mt-auto pt-[8px]">
+                    <div className="flex flex-col gap-[2px]">
+                      <span
+                        className="text-[10px] font-medium"
+                        style={{ color: settings.card_text_color, fontFamily }}
+                      >
+                        {entry.name}
+                      </span>
+                      <span
+                        className="text-[8px]"
+                        style={{ color: settings.card_text_color, opacity: 0.5 }}
+                      >
+                        {new Date(entry.created_at).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            {/* Shadow overlay for punch holes (only when transparent — outside mask) */}
+            {settings.widget_transparent_bg && (
+              <div className="absolute left-[6px] top-[8px] bottom-[8px] flex flex-col items-center justify-between pointer-events-none">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-[10px] h-[10px] rounded-full"
+                    style={{ boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.15) inset" }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

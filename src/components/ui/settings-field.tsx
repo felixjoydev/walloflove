@@ -69,11 +69,15 @@ export function SettingsColorField({
   value,
   onChange,
   pickerPosition = "top",
+  showStrike = false,
+  trailing,
 }: {
   label: string;
   value: string;
   onChange: (color: string) => void;
   pickerPosition?: "top" | "bottom";
+  showStrike?: boolean;
+  trailing?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -108,10 +112,16 @@ export function SettingsColorField({
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="w-[28px] h-[28px] rounded-icon shrink-0 cursor-pointer border border-border"
+            className="relative w-[28px] h-[28px] rounded-icon shrink-0 cursor-pointer border border-border overflow-hidden"
             style={{ backgroundColor: value }}
             aria-label={`Pick ${label.toLowerCase()}`}
-          />
+          >
+            {showStrike && (
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 28 28">
+                <line x1="4" y1="24" x2="24" y2="4" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
           <input
             type="text"
             value={displayValue}
@@ -121,6 +131,7 @@ export function SettingsColorField({
             maxLength={6}
             className="w-full bg-transparent text-body font-medium text-text-primary outline-none"
           />
+          {trailing}
         </InnerCard>
         {open && (
           <div className={`absolute left-0 z-50 ${pickerPosition === "top" ? "bottom-full mb-[8px]" : "top-full mt-[8px]"}`}>
