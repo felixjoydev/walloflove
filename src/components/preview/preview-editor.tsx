@@ -458,7 +458,13 @@ export function PreviewEditor({
       </div>
 
       {showEmbed && (
-        <EmbedModal guestbookId={guestbookId} onClose={() => setShowEmbed(false)} />
+        <EmbedModal
+          guestbookId={guestbookId}
+          onClose={() => setShowEmbed(false)}
+          settings={settings}
+          entries={entries}
+          fontFamily={fontFamily}
+        />
       )}
 
       {/* Sticky save bar — appears only when settings differ from saved */}
@@ -989,50 +995,82 @@ function WidgetPreview({
         </p>
       </div>
 
-      {/* Signature cards — 2x2 grid */}
+      {/* Signature cards — 2x2 grid (Wall of Love card design) */}
       <div className="mt-[24px] grid grid-cols-2 gap-[12px]" style={zoneStyle("cards")}>
         {sampleEntries.map((entry) => (
           <div
             key={entry.id}
-            className="rounded-input p-[12px] flex flex-col relative"
+            className="flex flex-col relative overflow-hidden"
+            style={{ borderRadius: `${settings.card_border_radius}px`, paddingTop: "10px", paddingRight: "10px", paddingBottom: "10px", paddingLeft: "28px" }}
           >
+            {/* Background layer */}
             <div
-              className="absolute inset-0 rounded-input shadow-card"
-              style={{ backgroundColor: settings.card_background_color, ...cardInnerStyle("card-frame") }}
+              className="absolute inset-0 shadow-card"
+              style={{ backgroundColor: settings.card_background_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-frame") }}
             />
+            {/* Border layer */}
             <div
-              className="absolute inset-0 rounded-input border"
-              style={{ borderColor: settings.card_border_color, ...cardInnerStyle("card-border") }}
+              className="absolute inset-0 border"
+              style={{ borderColor: settings.card_border_color, borderRadius: `${settings.card_border_radius}px`, ...cardInnerStyle("card-border") }}
             />
+            {/* Notebook punch holes */}
+            <div className="absolute left-[6px] top-[8px] bottom-[8px] flex flex-col items-center justify-between pointer-events-none">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-[10px] h-[10px] rounded-full"
+                  style={{
+                    backgroundColor: settings.background_color,
+                    boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.15) inset",
+                  }}
+                />
+              ))}
+            </div>
+            {/* Content layer */}
             <div className="relative flex flex-col flex-1">
-              <div style={cardInnerStyle("card-text-only")}>
-                <p
-                  className="text-[12px]"
-                  style={{ color: settings.card_text_color, opacity: 0.7, fontFamily }}
-                >
-                  {entry.message}
-                </p>
-              </div>
-              <div className="flex items-end justify-between mt-auto pt-[8px]">
-                <div className="flex flex-col gap-[2px]" style={cardInnerStyle("card-text-only")}>
-                  <span
-                    className="text-[12px] font-medium"
-                    style={{ color: settings.card_text_color, fontFamily }}
-                  >
-                    {entry.name}
-                  </span>
-                  <span
-                    className="text-[10px]"
-                    style={{ color: settings.card_text_color, opacity: 0.7 }}
-                  >
-                    {new Date(entry.created_at).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
+              {/* Doodle area with dots */}
+              <div
+                className="w-full h-[60px] flex items-center justify-center"
+                style={{
+                  backgroundColor: settings.canvas_background_color,
+                  backgroundImage: `radial-gradient(circle, ${getDotColor(settings.background_color)} 1px, transparent 1px)`,
+                  backgroundSize: "14px 14px",
+                  borderRadius: "6px",
+                  ...cardInnerStyle("card-doodle"),
+                }}
+              >
                 <SignatureSample color="#000000" />
+              </div>
+              {/* Text content */}
+              <div className="flex flex-col flex-1" style={cardInnerStyle("card-text-only")}>
+                {entry.message && (
+                  <p
+                    className="text-[10px] mt-[8px]"
+                    style={{ color: settings.card_text_color, opacity: 0.7, fontFamily }}
+                  >
+                    {entry.message}
+                  </p>
+                )}
+                <div className="flex items-end justify-between mt-auto pt-[8px]">
+                  <div className="flex flex-col gap-[2px]">
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: settings.card_text_color, fontFamily }}
+                    >
+                      {entry.name}
+                    </span>
+                    <span
+                      className="text-[8px]"
+                      style={{ color: settings.card_text_color, opacity: 0.5 }}
+                    >
+                      {new Date(entry.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
