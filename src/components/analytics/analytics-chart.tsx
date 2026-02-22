@@ -1,44 +1,143 @@
 "use client";
 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Card } from "@/components/ui/card";
+
 interface TimeSeriesPoint {
   date: string;
   count: number;
 }
 
-export function AnalyticsChart({ data }: { data: TimeSeriesPoint[] }) {
-  if (data.length === 0) return null;
+interface AnalyticsChartProps {
+  data: TimeSeriesPoint[];
+  timeRange: number;
+  onTimeRangeChange: (days: number) => void;
+}
 
-  const max = Math.max(...data.map((d) => d.count), 1);
-  const chartHeight = 160;
-  const barWidth = Math.max(2, Math.min(12, 600 / data.length - 2));
+const TIME_RANGES = [
+  { label: "Today", days: 1 },
+  { label: "Last 7 Days", days: 7 },
+  { label: "Last 30 Days", days: 30 },
+] as const;
+
+function filterByTimeRange(data: TimeSeriesPoint[], days: number): TimeSeriesPoint[] {
+  if (days >= data.length) return data;
+  return data.slice(-days);
+}
+
+function formatDateLabel(dateStr: string, timeRange: number): string {
+  const date = new Date(dateStr + "T00:00:00");
+  if (timeRange === 1) {
+    return "Today";
+  }
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4">
-      <h3 className="text-sm font-medium text-neutral-500">Views over time</h3>
-      <div className="mt-3 flex items-end gap-[2px]" style={{ height: chartHeight }}>
-        {data.map((point) => {
-          const height = (point.count / max) * chartHeight;
-          return (
-            <div
-              key={point.date}
-              className="group relative"
-              style={{ width: barWidth }}
-            >
-              <div
-                className="rounded-t bg-neutral-900 transition-colors group-hover:bg-neutral-700"
-                style={{ height: Math.max(height, 1), width: "100%" }}
-              />
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden rounded bg-neutral-800 px-2 py-1 text-xs text-white whitespace-nowrap group-hover:block">
-                {point.date}: {point.count}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-1 flex justify-between text-xs text-neutral-400">
-        <span>{data[0]?.date}</span>
-        <span>{data[data.length - 1]?.date}</span>
-      </div>
+    <div className="rounded-icon px-3 py-2 text-[12px] shadow-card" style={{ backgroundColor: "#14141F" }}>
+      <p className="font-medium text-white">{label}</p>
+      <p className="mt-0.5 text-[#949494]">
+        {payload[0].value.toLocaleString()} views
+      </p>
     </div>
+  );
+}
+
+export function AnalyticsChart({ data, timeRange, onTimeRangeChange }: AnalyticsChartProps) {
+  if (data.length === 0) return null;
+
+  const filtered = filterByTimeRange(data, timeRange);
+
+  const chartData = filtered.map((point) => ({
+    ...point,
+    label: formatDateLabel(point.date, timeRange),
+  }));
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-body-sm font-medium text-text-secondary">Views over time</h3>
+        <div className="flex gap-1 rounded-icon bg-bg-subtle p-1">
+          {TIME_RANGES.map((range) => (
+            <button
+              key={range.days}
+              onClick={() => onTimeRangeChange(range.days)}
+              className={`rounded-icon px-3 py-1 text-[12px] font-medium transition-colors cursor-pointer ${
+                timeRange === range.days
+                  ? "bg-bg-card text-text-primary shadow-card-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {range.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4" style={{ height: 240 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#9580FF" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="#9580FF" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#EAEAEA"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: "#949494" }}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: "#949494" }}
+              allowDecimals={false}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="count"
+              stroke="#9580FF"
+              strokeWidth={2}
+              fill="url(#chartGradient)"
+              dot={false}
+              activeDot={{
+                r: 4,
+                fill: "#9580FF",
+                stroke: "#fff",
+                strokeWidth: 2,
+              }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
   );
 }
