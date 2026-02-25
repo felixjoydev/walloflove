@@ -1,25 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
 import { useGuestbookContext } from "@/components/providers/guestbook-provider";
 import type { GuestbookSettings } from "@shared/types";
-import { saveSettingsAction, renameGuestbookAction, updateSlugAction } from "./actions";
+import { saveSettingsAction, renameGuestbookAction } from "./actions";
 import { deleteGuestbookAction } from "@/components/guestbook/delete-guestbook-action";
+import { SettingsTextField, SettingsRadioField } from "@/components/ui/settings-field";
+import { Button } from "@/components/ui/button";
 
-type ModerationMode = NonNullable<GuestbookSettings["moderation_mode"]>;
+type SettingsTab = "general" | "domain" | "billing";
 
 export function SettingsForm() {
   const router = useRouter();
   const guestbook = useGuestbookContext();
 
+  const [tab, setTab] = useState<SettingsTab>("general");
   const [name, setName] = useState(guestbook.name);
-  const [slug, setSlug] = useState(guestbook.slug ?? "");
   const [settings, setSettings] = useState<Required<GuestbookSettings>>(guestbook.settings);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const savedName = useRef(guestbook.name);
+  const savedSettings = useRef(guestbook.settings);
+
+  const hasChanges =
+    name !== savedName.current ||
+    JSON.stringify(settings) !== JSON.stringify(savedSettings.current);
 
   function update<K extends keyof GuestbookSettings>(key: K, value: GuestbookSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -28,34 +36,27 @@ export function SettingsForm() {
   async function handleSave() {
     setSaving(true);
 
-    if (name.trim() && name.trim() !== guestbook.name) {
+    if (name.trim() && name.trim() !== savedName.current) {
       const nameResult = await renameGuestbookAction(guestbook.id, name.trim());
       if (nameResult.error) {
         toast.error(nameResult.error);
         setSaving(false);
         return;
       }
-    }
-
-    if (slug && slug !== guestbook.slug) {
-      const slugResult = await updateSlugAction(guestbook.id, slug);
-      if (slugResult.error) {
-        toast.error(slugResult.error);
-        setSaving(false);
-        return;
-      }
+      savedName.current = name.trim();
     }
 
     const result = await saveSettingsAction(guestbook.id, {
       moderation_mode: settings.moderation_mode,
-      cta_text: settings.cta_text,
-      max_entries_displayed: settings.max_entries_displayed,
-      show_link_field: settings.show_link_field,
-      show_message_field: settings.show_message_field,
     });
 
-    if (result.error) toast.error(result.error);
-    else toast.success("Settings saved");
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Settings saved");
+      savedSettings.current = { ...settings };
+    }
+
     setSaving(false);
     router.refresh();
   }
@@ -74,174 +75,140 @@ export function SettingsForm() {
     router.refresh();
   }
 
+  const tabs: { label: string; value: SettingsTab }[] = [
+    { label: "General", value: "general" },
+    { label: "Domain", value: "domain" },
+    { label: "Billing", value: "billing" },
+  ];
+
   return (
-    <div className="mt-6 max-w-lg space-y-8">
-      {/* Guestbook name */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium">Guestbook name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-        />
+    <div className={`flex-1 flex flex-col ${hasChanges ? "-mb-8" : ""}`}>
+      {/* Tabs */}
+      <div className="flex gap-[4px] border-b border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`border-b-2 px-[16px] py-[10px] text-body font-medium transition-colors cursor-pointer ${
+              tab === t.value
+                ? "border-text-primary text-text-primary"
+                : "border-transparent text-text-placeholder hover:text-text-secondary"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Slug / URL */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium">Public URL slug</label>
-        <div className="flex items-center gap-1 text-sm text-neutral-500">
-          <span>/wall/</span>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-            placeholder="my-guestbook"
+      {/* Tab content */}
+      <div className="mt-[24px] space-y-[16px]">
+        {tab === "general" && (
+          <>
+            <SettingsTextField
+              label="Guestbook name"
+              value={name}
+              onChange={setName}
+            />
+
+            <SettingsRadioField
+              label="Moderation mode"
+              description="Explain about moderation"
+              value={settings.moderation_mode}
+              onChange={(v) => update("moderation_mode", v as "auto_approve" | "manual_approve")}
+              options={[
+                { label: "Manual", value: "manual_approve" },
+                { label: "Auto Approve", value: "auto_approve" },
+              ]}
+            />
+
+            {/* Delete Guestbook */}
+            <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
+              <div className="px-[12px] pt-[10px] pb-[8px]">
+                <span className="text-body font-medium text-text-primary block">
+                  Delete Guestbook
+                </span>
+                <span className="text-body-sm text-text-secondary block mt-[2px]">
+                  Permanently delete this guestbook and all its entries.
+                </span>
+              </div>
+              <div className="rounded-t-input rounded-b-input border-t border-border bg-bg-card px-[10px] py-[10px]">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center justify-center h-[36px] px-[16px] text-body-sm font-semibold rounded-icon bg-reject text-white hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Delete guestbook"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {tab === "domain" && (
+          <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
+            <div className="px-[12px] pt-[10px] pb-[8px]">
+              <span className="text-body font-medium text-text-primary block">
+                Custom Domain
+              </span>
+              <span className="text-body-sm text-text-secondary block mt-[2px]">
+                Serve your wall of love from your own domain.
+              </span>
+            </div>
+            <div className="rounded-t-input rounded-b-input border-t border-border bg-bg-card px-[10px] py-[16px] flex flex-col gap-[12px]">
+              <div className="flex flex-col gap-[4px] px-[4px]">
+                <span className="text-body-sm text-text-secondary">Example:</span>
+                <span className="text-body-sm font-medium text-text-primary">love.yourdomain.com</span>
+              </div>
+              <Button size="small" variant="primary">
+                Set up your custom domain
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {tab === "billing" && (
+          <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
+            <div className="px-[12px] pt-[10px] pb-[8px]">
+              <span className="text-body font-medium text-text-primary block">
+                Plan & Billing
+              </span>
+              <span className="text-body-sm text-text-secondary block mt-[2px]">
+                Manage your subscription and plan details.
+              </span>
+            </div>
+            <div className="rounded-t-input rounded-b-input border-t border-border bg-bg-card px-[10px] py-[16px] flex flex-col gap-[12px]">
+              <div className="flex items-center justify-between px-[4px]">
+                <div>
+                  <span className="text-body font-medium text-text-primary block">Free Plan</span>
+                  <span className="text-body-sm text-text-secondary block mt-[2px]">1 guestbook, unlimited entries</span>
+                </div>
+                <span className="text-body font-semibold text-text-primary">$0/mo</span>
+              </div>
+              <Button size="small" variant="secondary">
+                Upgrade plan
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Spacer pushes save bar to bottom */}
+      <div className="flex-1" />
+
+      {/* Sticky save bar */}
+      {hasChanges && (
+        <div className="sticky bottom-0 z-50">
+          <div
+            className="h-[24px]"
+            style={{ background: "linear-gradient(to top, var(--color-bg-page) 0%, transparent 100%)" }}
           />
+          <div className="bg-bg-page pb-[16px] pt-[8px] flex justify-start">
+            <Button size="small" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
         </div>
-        <p className="text-xs text-neutral-400">
-          Used for public wall and collection URLs.
-        </p>
-      </div>
-
-      {/* CTA text */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium">Button text (CTA)</label>
-        <input
-          type="text"
-          value={settings.cta_text}
-          onChange={(e) => update("cta_text", e.target.value)}
-          maxLength={50}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-        />
-      </div>
-
-      {/* Moderation mode */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium">Moderation mode</label>
-        <div className="flex gap-4">
-          {(
-            [
-              { label: "Auto-approve", value: "auto_approve" },
-              { label: "Manual review", value: "manual_approve" },
-            ] as const
-          ).map((opt) => (
-            <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="moderation"
-                checked={settings.moderation_mode === opt.value}
-                onChange={() => update("moderation_mode", opt.value as ModerationMode)}
-                className="accent-neutral-900"
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Max entries */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium">Max entries displayed</label>
-        <select
-          value={settings.max_entries_displayed}
-          onChange={(e) => update("max_entries_displayed", Number(e.target.value))}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-        >
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
-      </div>
-
-      {/* Toggle: show message field */}
-      <ToggleSetting
-        label="Show message field"
-        description="Let visitors add a short message with their drawing."
-        checked={settings.show_message_field}
-        onChange={() => update("show_message_field", !settings.show_message_field)}
-      />
-
-      {/* Toggle: show link field */}
-      <ToggleSetting
-        label="Show link field"
-        description="Let visitors include a link (HTTPS only)."
-        checked={settings.show_link_field}
-        onChange={() => update("show_link_field", !settings.show_link_field)}
-      />
-
-      {/* Save */}
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-      >
-        {saving ? "Saving..." : "Save settings"}
-      </button>
-
-      {/* Billing section */}
-      <div className="border-t border-neutral-200 pt-6">
-        <h2 className="text-lg font-semibold">Billing</h2>
-        <p className="mt-1 text-sm text-neutral-500">Manage your subscription and plan.</p>
-        <Link
-          href="/billing"
-          className="mt-3 inline-block rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
-        >
-          Manage billing
-        </Link>
-      </div>
-
-      {/* Danger zone */}
-      <div className="border-t border-red-200 pt-6">
-        <h2 className="text-lg font-semibold text-red-600">Danger zone</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          Permanently delete this guestbook and all its entries.
-        </p>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="mt-3 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-        >
-          {deleting ? "Deleting..." : "Delete guestbook"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ToggleSetting({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-neutral-400">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={onChange}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          checked ? "bg-neutral-900" : "bg-neutral-300"
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-            checked ? "translate-x-6" : "translate-x-1"
-          }`}
-        />
-      </button>
+      )}
     </div>
   );
 }

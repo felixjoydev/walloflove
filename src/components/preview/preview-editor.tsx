@@ -175,7 +175,7 @@ export function PreviewEditor({
   }
 
   return (
-    <div className={hasChanges ? "-mb-8" : ""}>
+    <div className={`flex-1 flex flex-col ${hasChanges ? "-mb-8" : ""}`}>
       {/* Tabs */}
       <div className="flex gap-[4px] border-b border-border">
         {tabs.map((t) => (
@@ -493,6 +493,9 @@ export function PreviewEditor({
           fontFamily={fontFamily}
         />
       )}
+
+      {/* Spacer pushes save bar to bottom */}
+      <div className="flex-1" />
 
       {/* Sticky save bar — appears only when settings differ from saved */}
       {hasChanges && (

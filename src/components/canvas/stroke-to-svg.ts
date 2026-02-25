@@ -53,6 +53,8 @@ function getStrokeOptions(tool: string, size: number) {
   }
 }
 
+let _maskCounter = 0;
+
 export function strokeDataToSvg(
   data: DrawingData,
   colorOverride?: string
@@ -95,15 +97,16 @@ export function strokeDataToSvg(
   ];
 
   if (hasEraser) {
+    const maskId = `em${_maskCounter++}`;
     parts.push("<defs>");
-    parts.push('<mask id="e">');
+    parts.push(`<mask id="${maskId}">`);
     parts.push(
       `<rect width="${width}" height="${height}" fill="white"/>`
     );
     parts.push(...eraserPaths);
     parts.push("</mask>");
     parts.push("</defs>");
-    parts.push('<g mask="url(#e)">');
+    parts.push(`<g mask="url(#${maskId})">`);
     parts.push(...drawPaths);
     parts.push("</g>");
   } else {

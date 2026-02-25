@@ -76,9 +76,8 @@ export function WallView({
     if (!gridCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
       const res = await fetch(
-        `${apiUrl}/api/v1/guestbooks/${guestbook.id}/entries?cursor=${gridCursor}`
+        `/api/v1/guestbooks/${guestbook.id}/entries?cursor=${gridCursor}`
       );
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
@@ -98,7 +97,6 @@ export function WallView({
 
     const allEntries: Entry[] = [];
     let cursor: string | null = null;
-    const apiUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
     try {
       // First, use already-fetched grid entries
@@ -108,7 +106,7 @@ export function WallView({
       // Then fetch remaining pages
       while (cursor) {
         const res = await fetch(
-          `${apiUrl}/api/v1/guestbooks/${guestbook.id}/entries?cursor=${cursor}`
+          `/api/v1/guestbooks/${guestbook.id}/entries?cursor=${cursor}`
         );
         if (!res.ok) break;
         const data = await res.json();
@@ -143,7 +141,6 @@ export function WallView({
 
   useEffect(() => {
     const supabase = createClient();
-    const apiUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
     // Sync grid/canvas state with fresh API data. Fresh entries replace
     // existing ones (fixes stale stroke_data). Entries not in fresh
@@ -169,7 +166,7 @@ export function WallView({
       polling = true;
       try {
         const res = await fetch(
-          `${apiUrl}/api/v1/guestbooks/${guestbook.id}/entries`
+          `/api/v1/guestbooks/${guestbook.id}/entries`
         );
         if (!res.ok) return;
         const data = await res.json();
@@ -312,8 +309,7 @@ function CollectModal({
 
     setSubmitting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-      const res = await fetch(`${apiUrl}/api/v1/guestbooks/${guestbook.id}/entries`, {
+      const res = await fetch(`/api/v1/guestbooks/${guestbook.id}/entries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

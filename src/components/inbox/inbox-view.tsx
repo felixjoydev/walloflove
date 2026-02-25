@@ -171,7 +171,7 @@ export function InboxView({
   ];
 
   return (
-    <div className="-mb-8">
+    <div className="-mb-8 flex-1 flex flex-col">
       <h1 className="text-2xl font-bold">Inbox</h1>
 
       {/* Tabs */}
@@ -216,6 +216,9 @@ export function InboxView({
           acting={acting}
         />
       )}
+
+      {/* Spacer pushes sticky bar to bottom */}
+      <div className="flex-1" />
 
       {/* Sticky bottom bar — Select All + bulk actions */}
       {filtered.length > 0 && (

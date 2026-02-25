@@ -5,12 +5,17 @@ import { HexColorPicker } from "react-colorful";
 
 /* ─── Base wrapper ─── */
 
-function SettingsField({ label, children }: { label: string; children: React.ReactNode }) {
+function SettingsField({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
     <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
       <span className="text-body font-medium text-text-primary block px-[12px] pt-[10px] pb-[8px]">
         {label}
       </span>
+      {description && (
+        <span className="text-body-sm text-text-secondary block px-[12px] pb-[8px] -mt-[4px]">
+          {description}
+        </span>
+      )}
       {children}
     </div>
   );
@@ -368,6 +373,54 @@ export function SettingsSliderField({
             />
           </div>
         </div>
+      </InnerCard>
+    </SettingsField>
+  );
+}
+
+/* ─── Radio field ─── */
+
+export function SettingsRadioField({
+  label,
+  description,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  description?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { label: string; value: string }[];
+}) {
+  return (
+    <SettingsField label={label} description={description}>
+      <InnerCard className="flex items-center gap-[8px] px-[10px] py-[10px]">
+        {options.map((opt) => (
+          <label
+            key={opt.value}
+            className="flex items-center gap-[8px] cursor-pointer text-body font-medium text-text-primary px-[4px]"
+          >
+            <span
+              className={`w-[20px] h-[20px] rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                value === opt.value ? "bg-accent" : "bg-bg-input border-2 border-border"
+              }`}
+            >
+              {value === opt.value && (
+                <span className="w-[8px] h-[8px] rounded-full bg-white" />
+              )}
+            </span>
+            <input
+              type="radio"
+              name={label}
+              value={opt.value}
+              checked={value === opt.value}
+              onChange={() => onChange(opt.value)}
+              className="sr-only"
+            />
+            {opt.label}
+          </label>
+        ))}
       </InnerCard>
     </SettingsField>
   );

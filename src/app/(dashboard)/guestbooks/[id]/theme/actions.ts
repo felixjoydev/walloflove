@@ -40,7 +40,10 @@ export async function uploadLogoAction(
     .from("logos")
     .getPublicUrl(path);
 
-  return { error: null, url: urlData.publicUrl };
+  // Append cache-buster so the browser fetches the new file and the URL
+  // differs from the previously saved logo_url (same storage path on re-upload).
+  const url = `${urlData.publicUrl}?t=${Date.now()}`;
+  return { error: null, url };
 }
 
 export async function saveThemeAction(

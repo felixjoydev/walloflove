@@ -186,7 +186,7 @@ export function EmbedModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
       onClick={onClose}
     >
       <div
@@ -225,7 +225,7 @@ export function EmbedModal({
             <div
               className="relative z-10 rounded-input border border-border shadow-card p-[16px]"
               style={{
-                backgroundColor: settings.widget_transparent_bg ? "transparent" : settings.background_color,
+                backgroundColor: settings.widget_transparent_bg ? "#ffffff" : settings.background_color,
                 backgroundImage: settings.widget_transparent_bg
                   ? "linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)"
                   : undefined,
