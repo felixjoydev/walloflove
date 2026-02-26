@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Scorekard";
+  src: url("/fonts/Scorekard-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Scorekard";
+  src: url("/fonts/Scorekard-Semibold.otf") format("opentype");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Scorekard";
+  src: url("/fonts/Scorekard-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-display: swap;
+}
+
 @theme {
+  --font-display: "Scorekard", serif;
   /* Colors */
   --color-bg-page: #FBFBFB;
   --color-bg-card: #FFFFFF;
@@ -66,4 +88,43 @@
 @keyframes popover-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes letter-glow {
+  0%, 60%, 100% {
+    color: #3f3f3f;
+    text-shadow: 0 0 0px rgba(196, 184, 255, 0);
+  }
+  30% {
+    color: #c4b8ff;
+    text-shadow: 0 0 6px rgba(149, 128, 255, 0.6);
+  }
+}
+
+@keyframes starblink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pokeshake {
+  0%, 50%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-12deg); }
+  20% { transform: rotate(12deg); }
+  30% { transform: rotate(-8deg); }
+  40% { transform: rotate(8deg); }
+}
+
+@keyframes pokeglow {
+  0%, 5%, 50%, 100% { fill: #E6E9ED; }
+  10%, 20%, 30%, 40% { fill: #ED5564; }
+}
+
+@keyframes pokeglowdrop {
+  0%, 5%, 50%, 100% { opacity: 0; }
+  10%, 20%, 30%, 40% { opacity: 1; }
 }
