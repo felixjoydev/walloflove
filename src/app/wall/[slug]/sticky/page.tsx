@@ -6,7 +6,7 @@ import { mergeSettings } from "@shared/types";
 import type { GuestbookSettings } from "@shared/types";
 import { WallView } from "@/components/wall/wall-view";
 
-export default async function WallPage({
+export default async function StickyWallPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -15,7 +15,11 @@ export default async function WallPage({
   const guestbook = await getPublicGuestbookBySlug(supabaseAdmin, slug);
   if (!guestbook) notFound();
 
-  const { entries, cursor } = await listApprovedEntries(supabaseAdmin, guestbook.id, null);
+  const { entries, cursor } = await listApprovedEntries(
+    supabaseAdmin,
+    guestbook.id,
+    null
+  );
   const settings = mergeSettings(
     guestbook.settings as Partial<GuestbookSettings> | null
   );
@@ -30,7 +34,7 @@ export default async function WallPage({
       }}
       entries={entries}
       initialCursor={cursor}
-      variant={settings.wall_style}
+      variant="sticky"
     />
   );
 }

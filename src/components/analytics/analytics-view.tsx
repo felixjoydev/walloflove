@@ -39,10 +39,10 @@ export function AnalyticsView({
 
   const data = tab === "wall" ? wall : tab === "collection" ? collection : widget;
 
-  const tabs: { label: string; value: AnalyticsTab }[] = [
+  const tabs: { label: string; value: AnalyticsTab; disabled?: boolean }[] = [
     { label: "Wall of Love", value: "wall" },
     { label: "Collection Link", value: "collection" },
-    { label: "Widget", value: "widget" },
+    { label: "Widget", value: "widget", disabled: true },
   ];
 
   const isEmpty = data.summary.page_views === 0 && data.summary.submissions === 0;
@@ -55,14 +55,22 @@ export function AnalyticsView({
         {tabs.map((t) => (
           <button
             key={t.value}
-            onClick={() => setTab(t.value)}
-            className={`border-b-2 px-4 py-2.5 text-body-sm font-medium transition-colors cursor-pointer ${
-              tab === t.value
-                ? "border-text-primary text-text-primary"
-                : "border-transparent text-text-placeholder hover:text-text-secondary"
+            onClick={() => !t.disabled && setTab(t.value)}
+            disabled={t.disabled}
+            className={`border-b-2 px-4 py-2.5 text-body-sm font-medium transition-colors flex items-center gap-[6px] ${
+              t.disabled
+                ? "border-transparent text-text-placeholder cursor-default opacity-50"
+                : tab === t.value
+                  ? "border-text-primary text-text-primary cursor-pointer"
+                  : "border-transparent text-text-placeholder hover:text-text-secondary cursor-pointer"
             }`}
           >
             {t.label}
+            {t.disabled && (
+              <span className="text-[10px] font-medium bg-bg-subtle text-text-placeholder rounded-full px-[6px] py-[1px]">
+                Soon
+              </span>
+            )}
           </button>
         ))}
       </div>

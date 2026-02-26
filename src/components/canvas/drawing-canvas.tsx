@@ -165,6 +165,9 @@ interface DrawingCanvasProps {
   colorOverride?: string;
   brandColor?: string;
   className?: string;
+  showDotGrid?: boolean;
+  showInsetShadow?: boolean;
+  drawerColor?: string;
 }
 
 /* ─── Component ─── */
@@ -178,6 +181,9 @@ export function DrawingCanvas({
   colorOverride,
   brandColor = "#9580FF",
   className,
+  showDotGrid = true,
+  showInsetShadow = true,
+  drawerColor = "#ECECEC",
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
@@ -351,19 +357,21 @@ export function DrawingCanvas({
           backgroundColor,
           width: "100%",
           aspectRatio: `${width}/${height}`,
-          boxShadow: "0 2px 2px 0 rgba(0, 0, 0, 0.10) inset",
+          boxShadow: showInsetShadow ? "0 2px 2px 0 rgba(0, 0, 0, 0.10) inset" : "none",
         }}
       >
         {/* Dot grid background */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: "radial-gradient(circle, #D9D9D9 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            backgroundPosition: "10px 10px",
-            zIndex: 0,
-          }}
-        />
+        {showDotGrid && (
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "radial-gradient(circle, #D9D9D9 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              backgroundPosition: "10px 10px",
+              zIndex: 0,
+            }}
+          />
+        )}
 
         {/* Invisible canvas for pointer capture */}
         <canvas
@@ -445,7 +453,7 @@ export function DrawingCanvas({
           style={{ zIndex: 3 }}
         >
           {/* Drawer background: rounded top corners only, flush bottom */}
-          <div className="absolute bottom-0 inset-x-0 h-[52px] rounded-t-[20px]" style={{ backgroundColor: "#ECECEC" }} />
+          <div className="absolute bottom-0 inset-x-0 h-[52px] rounded-t-[20px]" style={{ backgroundColor: drawerColor }} />
 
           {/* Tools + popovers positioned above drawer */}
           <div className="relative flex justify-center items-end gap-[24px] px-[28px] pb-[10px]">

@@ -43,6 +43,7 @@ export function SignatureSvg({
     <div
       className={className}
       style={style}
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

@@ -15,14 +15,35 @@ interface CollectionGuestbook {
   settings: Required<GuestbookSettings>;
 }
 
+const STICKY_COLORS = [
+  "#F5F5F5",
+  "#FFD0C8",
+  "#FFE5CB",
+  "#FFF9C6",
+  "#D1F6D7",
+  "#CBE9FF",
+  "#E5D7FF",
+  "#FFCBE9",
+] as const;
+
+function darkenColor(hex: string, amount: number): string {
+  const clean = hex.replace("#", "");
+  const r = Math.max(0, parseInt(clean.slice(0, 2), 16) - Math.round(255 * amount));
+  const g = Math.max(0, parseInt(clean.slice(2, 4), 16) - Math.round(255 * amount));
+  const b = Math.max(0, parseInt(clean.slice(4, 6), 16) - Math.round(255 * amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
 export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }) {
   const { settings } = guestbook;
+  const isSticky = settings.wall_style === "sticky";
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [link, setLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [drawingData, setDrawingData] = useState<DrawingData | null>(null);
+  const [selectedColor, setSelectedColor] = useState("#FFF9C6");
 
   const handleDrawingChange = useCallback((data: DrawingData) => {
     setDrawingData(data);
@@ -44,6 +65,8 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
     e.preventDefault();
     if (!name.trim()) return;
 
+    const baseStrokeData = drawingData ?? { version: 1, width: 400, height: 250, strokes: [] };
+
     setSubmitting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -54,7 +77,10 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
           name: name.trim(),
           message: message.trim() || undefined,
           link: link.trim() || undefined,
-          stroke_data: drawingData ?? { version: 1, width: 400, height: 250, strokes: [] },
+          stroke_data: {
+            ...baseStrokeData,
+            ...(isSticky ? { note_color: selectedColor } : {}),
+          },
         }),
       });
 
@@ -99,6 +125,106 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
     );
   }
 
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-[16px] p-[24px]">
+      {/* Sticky color picker */}
+      {isSticky && (
+        <div className="flex items-center gap-[8px] justify-center">
+          {STICKY_COLORS.map((color) => {
+            const isSelected = selectedColor === color;
+            const foldLight = darkenColor(color, 0.05);
+            const foldDark = darkenColor(color, 0.18);
+            const foldStroke = darkenColor(color, 0.10);
+            return (
+              <button
+                key={color}
+                type="button"
+                onClick={() => setSelectedColor(color)}
+                className="relative shrink-0 cursor-pointer transition-all overflow-hidden"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  backgroundColor: color,
+                  borderRadius: "5px 5px 12px 5px",
+                  outline: isSelected ? `2px solid ${settings.brand_color}` : "none",
+                  outlineOffset: "2px",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                }}
+              >
+                <div
+                  className="absolute bottom-0 right-0 pointer-events-none"
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderTopLeftRadius: "4px",
+                    border: "0.5px solid transparent",
+                    backgroundImage: `linear-gradient(132deg, ${foldLight} 79.5%, ${foldDark} 85.97%), linear-gradient(135deg, ${foldStroke}00 0%, ${foldStroke} 100%)`,
+                    backgroundOrigin: "padding-box, border-box",
+                    backgroundClip: "padding-box, border-box",
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <DrawingCanvas
+        onChange={handleDrawingChange}
+        brandColor={settings.brand_color}
+        {...(isSticky ? {
+          backgroundColor: selectedColor,
+          showDotGrid: false,
+          showInsetShadow: false,
+          drawerColor: darkenColor(selectedColor, 0.05),
+        } : {})}
+      />
+
+      <Input
+        type="text"
+        required
+        placeholder="Your name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={100}
+      />
+
+      {settings.show_message_field && (
+        <textarea
+          placeholder="Your message (optional)"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          maxLength={200}
+          rows={3}
+          className="w-full rounded-input border border-border bg-bg-input px-[10px] py-[10px] text-body font-medium text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors resize-none"
+        />
+      )}
+
+      {settings.show_link_field && (
+        <Input
+          type="url"
+          placeholder="Your website (optional)"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          maxLength={500}
+        />
+      )}
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="flex items-center justify-center font-semibold h-[44px] w-full transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-50"
+        style={{
+          backgroundColor: settings.brand_color,
+          color: settings.button_text_color,
+          borderRadius: `${settings.button_border_radius}px`,
+        }}
+      >
+        {submitting ? "Submitting..." : settings.cta_text}
+      </button>
+    </form>
+  );
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-page px-4 py-12">
       <div className="w-full max-w-md flex flex-col gap-[24px]">
@@ -115,58 +241,8 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
           )}
         </div>
 
-        {/* Card: editor + form fields + button */}
-        <Card>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-[16px] p-[24px]">
-            <DrawingCanvas
-              onChange={handleDrawingChange}
-              brandColor={settings.brand_color}
-            />
-
-            <Input
-              type="text"
-              required
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-            />
-
-            {settings.show_message_field && (
-              <textarea
-                placeholder="Your message (optional)"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                maxLength={200}
-                rows={3}
-                className="w-full rounded-input border border-border bg-bg-input px-[10px] py-[10px] text-body font-medium text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors resize-none"
-              />
-            )}
-
-            {settings.show_link_field && (
-              <Input
-                type="url"
-                placeholder="Your website (optional)"
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                maxLength={500}
-              />
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex items-center justify-center font-semibold h-[44px] w-full transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-50"
-              style={{
-                backgroundColor: settings.brand_color,
-                color: settings.button_text_color,
-                borderRadius: `${settings.button_border_radius}px`,
-              }}
-            >
-              {submitting ? "Submitting..." : settings.cta_text}
-            </button>
-          </form>
-        </Card>
+        {/* Card: always white, sticky color only affects the canvas */}
+        <Card>{formContent}</Card>
       </div>
     </div>
   );

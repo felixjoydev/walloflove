@@ -27,6 +27,7 @@ export interface GuestbookSettings {
   button_border_radius?: number;
   card_border_color?: string;
   widget_transparent_bg?: boolean;
+  wall_style?: "notebook" | "sticky";
 }
 
 export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
@@ -58,6 +59,7 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   button_border_radius: 9999,
   card_border_color: "#EAEAEA",
   widget_transparent_bg: true,
+  wall_style: "notebook",
 } as const;
 
 export function mergeSettings(

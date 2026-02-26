@@ -6,6 +6,7 @@ import type { GuestbookSettings } from "@shared/types";
 import type { DrawingData } from "@shared/types/drawing";
 import { WallNavbar } from "./wall-navbar";
 import { WallGrid } from "./wall-grid";
+import { StickyGrid } from "./sticky-grid";
 import { WallCanvas } from "./wall-canvas";
 import { DrawingCanvas } from "@/components/canvas/drawing-canvas";
 import { Card } from "@/components/ui/card";
@@ -28,15 +29,42 @@ interface WallGuestbook {
   settings: Required<GuestbookSettings>;
 }
 
+const GRID_VARIANTS = {
+  notebook: WallGrid,
+  sticky: StickyGrid,
+} as const;
+
+function darkenColor(hex: string, amount: number): string {
+  const clean = hex.replace("#", "");
+  const r = Math.max(0, parseInt(clean.slice(0, 2), 16) - Math.round(255 * amount));
+  const g = Math.max(0, parseInt(clean.slice(2, 4), 16) - Math.round(255 * amount));
+  const b = Math.max(0, parseInt(clean.slice(4, 6), 16) - Math.round(255 * amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+const STICKY_COLORS = [
+  "#F5F5F5",
+  "#FFD0C8",
+  "#FFE5CB",
+  "#FFF9C6",
+  "#D1F6D7",
+  "#CBE9FF",
+  "#E5D7FF",
+  "#FFCBE9",
+] as const;
+
 export function WallView({
   guestbook,
   entries: initialEntries,
   initialCursor,
+  variant = "notebook",
 }: {
   guestbook: WallGuestbook;
   entries: Entry[];
   initialCursor: string | null;
+  variant?: keyof typeof GRID_VARIANTS;
 }) {
+  const GridComponent = GRID_VARIANTS[variant];
   const { settings } = guestbook;
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
   const [showCollect, setShowCollect] = useState(false);
@@ -235,7 +263,7 @@ export function WallView({
 
       {/* Content */}
       {viewMode === "grid" ? (
-        <WallGrid
+        <GridComponent
           settings={settings}
           entries={gridEntries}
           fontFamily={fontFamily}
@@ -272,6 +300,7 @@ export function WallView({
           guestbook={guestbook}
           settings={settings}
           fontFamily={fontFamily}
+          variant={variant}
           onClose={() => setShowCollect(false)}
         />
       )}
@@ -285,11 +314,13 @@ function CollectModal({
   guestbook,
   settings,
   fontFamily,
+  variant = "notebook",
   onClose,
 }: {
   guestbook: { id: string; slug: string };
   settings: Required<GuestbookSettings>;
   fontFamily: string;
+  variant?: keyof typeof GRID_VARIANTS;
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
@@ -298,6 +329,7 @@ function CollectModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [drawingData, setDrawingData] = useState<DrawingData | null>(null);
+  const [selectedColor, setSelectedColor] = useState("#FFF9C6");
 
   const handleDrawingChange = useCallback((data: DrawingData) => {
     setDrawingData(data);
@@ -316,7 +348,10 @@ function CollectModal({
           name: name.trim(),
           message: message.trim() || undefined,
           link: link.trim() || undefined,
-          stroke_data: drawingData ?? { version: 1, width: 400, height: 250, strokes: [] },
+          stroke_data: {
+            ...(drawingData ?? { version: 1, width: 400, height: 250, strokes: [] }),
+            ...(variant === "sticky" ? { note_color: selectedColor } : {}),
+          },
         }),
       });
 
@@ -409,7 +444,58 @@ function CollectModal({
                 )}
               </div>
 
-              <DrawingCanvas onChange={handleDrawingChange} brandColor={settings.brand_color} />
+              {variant === "sticky" && (
+                <div className="flex items-center gap-[8px] justify-center">
+                  {STICKY_COLORS.map((color) => {
+                    const isSelected = selectedColor === color;
+                    const foldLight = darkenColor(color, 0.05);
+                    const foldDark = darkenColor(color, 0.18);
+                    const foldStroke = darkenColor(color, 0.10);
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        className="relative shrink-0 cursor-pointer transition-all overflow-hidden"
+                        style={{
+                          width: "28px",
+                          height: "28px",
+                          backgroundColor: color,
+                          borderRadius: "5px 5px 12px 5px",
+                          outline: isSelected ? `2px solid ${settings.brand_color}` : "none",
+                          outlineOffset: "2px",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                        }}
+                      >
+                        {/* Mini fold */}
+                        <div
+                          className="absolute bottom-0 right-0 pointer-events-none"
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderTopLeftRadius: "4px",
+                            border: "0.5px solid transparent",
+                            backgroundImage: `linear-gradient(132deg, ${foldLight} 79.5%, ${foldDark} 85.97%), linear-gradient(135deg, ${foldStroke}00 0%, ${foldStroke} 100%)`,
+                            backgroundOrigin: "padding-box, border-box",
+                            backgroundClip: "padding-box, border-box",
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <DrawingCanvas
+                onChange={handleDrawingChange}
+                brandColor={settings.brand_color}
+                {...(variant === "sticky" ? {
+                  backgroundColor: selectedColor,
+                  showDotGrid: false,
+                  showInsetShadow: false,
+                  drawerColor: darkenColor(selectedColor, 0.05),
+                } : {})}
+              />
 
               <Input
                 type="text"

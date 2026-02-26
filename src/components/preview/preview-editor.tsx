@@ -132,14 +132,15 @@ export function PreviewEditor({
         ? "monospace"
         : "system-ui, sans-serif";
 
-  const tabs: { label: string; value: PreviewTab }[] = [
+  const tabs: { label: string; value: PreviewTab; disabled?: boolean }[] = [
     { label: "Wall of love", value: "wall" },
-    { label: "Widget", value: "widget" },
     { label: "Collection Link", value: "collection" },
+    { label: "Widget", value: "widget", disabled: true },
   ];
 
   /* ─── Hover-highlight mapping: editor field → preview zones ─── */
   const FIELD_ZONES: Record<string, string[]> = {
+    style: [],
     logo: ["logo", "link-card"],
     font: [],
     "website-text": ["website-text", "link-card"],
@@ -181,23 +182,32 @@ export function PreviewEditor({
         {tabs.map((t) => (
           <button
             key={t.value}
-            onClick={() => setTab(t.value)}
-            className={`border-b-2 px-[16px] py-[10px] text-body font-medium transition-colors cursor-pointer ${
-              tab === t.value
-                ? "border-text-primary text-text-primary"
-                : "border-transparent text-text-placeholder hover:text-text-secondary"
+            onClick={() => !t.disabled && setTab(t.value)}
+            disabled={t.disabled}
+            className={`border-b-2 px-[16px] py-[10px] text-body font-medium transition-colors flex items-center gap-[6px] ${
+              t.disabled
+                ? "border-transparent text-text-placeholder cursor-default opacity-50"
+                : tab === t.value
+                  ? "border-text-primary text-text-primary cursor-pointer"
+                  : "border-transparent text-text-placeholder hover:text-text-secondary cursor-pointer"
             }`}
           >
             {t.label}
+            {t.disabled && (
+              <span className="text-[10px] font-medium bg-bg-subtle text-text-placeholder rounded-full px-[6px] py-[1px]">
+                Soon
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Header bar — URL + Publish for wall/collection, Get Embed Code for widget */}
+      {/* Header bar — URL + Publish */}
       <div ref={headerBarRef} className="mt-[16px] flex items-center justify-between">
+        {/* Widget header (commented out — widget tab disabled)
         {tab === "widget" ? (
           <div />
-        ) : (
+        ) : ( */}
           <div className="flex items-center gap-[24px] min-w-0">
             <div className="flex items-center gap-[8px] min-w-0">
               <GlobeIcon />
@@ -229,12 +239,13 @@ export function PreviewEditor({
               </button>
             </div>
           </div>
-        )}
+        {/* )} */}
+        {/* Widget embed button (commented out — widget tab disabled)
         {tab === "widget" ? (
           <Button size="small" onClick={() => setShowEmbed(true)}>
             Get Embed Code
           </Button>
-        ) : (
+        ) : ( */}
           <Button
             size="small"
             onClick={handlePublish}
@@ -243,13 +254,103 @@ export function PreviewEditor({
           >
             {publishing ? "Publishing..." : needsPublish ? "Publish" : "Published"}
           </Button>
-        )}
+        {/* )} */}
       </div>
 
       {/* Controls + Preview */}
       <div className="mt-[24px] flex gap-[16px] lg:flex-row flex-col">
         {/* Left panel — controls (40%) */}
         <div className="w-full lg:w-[40%] shrink-0">
+          {/* Style — notebook vs sticky notes */}
+          <div {...hlWrap("style")} className="mb-[16px]">
+            <label className="block text-body-sm font-medium text-text-secondary mb-[8px]">Style</label>
+            <div className="flex gap-[10px]">
+              {/* Notebook option */}
+              <button
+                type="button"
+                onClick={() => update("wall_style", "notebook")}
+                className="flex-1 flex flex-col items-center gap-[8px] rounded-card p-[12px] border cursor-pointer transition-all"
+                style={{
+                  borderColor: settings.wall_style === "notebook" ? settings.brand_color : "var(--color-border)",
+                  boxShadow: settings.wall_style === "notebook" ? `0 0 0 1px ${settings.brand_color}` : "none",
+                  backgroundColor: "var(--color-bg-card)",
+                }}
+              >
+                {/* Mini notebook card */}
+                <div
+                  className="w-[56px] h-[40px] relative overflow-hidden"
+                  style={{
+                    borderRadius: "6px",
+                    backgroundColor: "#ffffff",
+                    border: "1px solid var(--color-border)",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <div className="absolute left-[3px] top-[4px] bottom-[4px] flex flex-col items-center justify-between pointer-events-none">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-[5px] h-[5px] rounded-full"
+                        style={{
+                          backgroundColor: "#EAEAEA",
+                          boxShadow: "0 0.5px 1px 0 rgba(0,0,0,0.1) inset",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {/* Mini lines to suggest content */}
+                  <div className="absolute left-[14px] right-[6px] top-[8px] flex flex-col gap-[3px]">
+                    <div className="h-[2px] rounded-full bg-[#E0E0E0] w-full" />
+                    <div className="h-[2px] rounded-full bg-[#E0E0E0] w-[70%]" />
+                  </div>
+                </div>
+                <span className="text-[11px] font-medium text-text-secondary">Notebook</span>
+              </button>
+
+              {/* Sticky Notes option */}
+              <button
+                type="button"
+                onClick={() => update("wall_style", "sticky")}
+                className="flex-1 flex flex-col items-center gap-[8px] rounded-card p-[12px] border cursor-pointer transition-all"
+                style={{
+                  borderColor: settings.wall_style === "sticky" ? settings.brand_color : "var(--color-border)",
+                  boxShadow: settings.wall_style === "sticky" ? `0 0 0 1px ${settings.brand_color}` : "none",
+                  backgroundColor: "var(--color-bg-card)",
+                }}
+              >
+                {/* Mini sticky note */}
+                <div
+                  className="w-[56px] h-[40px] relative overflow-hidden"
+                  style={{
+                    borderRadius: "4px 4px 12px 4px",
+                    backgroundColor: "#FFF9C6",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  {/* Mini content lines */}
+                  <div className="absolute left-[6px] right-[6px] top-[8px] flex flex-col gap-[3px]">
+                    <div className="h-[2px] rounded-full w-full" style={{ backgroundColor: "#E6DBA0" }} />
+                    <div className="h-[2px] rounded-full w-[60%]" style={{ backgroundColor: "#E6DBA0" }} />
+                  </div>
+                  {/* Mini fold */}
+                  <div
+                    className="absolute bottom-0 right-0 pointer-events-none"
+                    style={{
+                      width: "10px",
+                      height: "10px",
+                      borderTopLeftRadius: "5px",
+                      border: "0.5px solid transparent",
+                      backgroundImage: "linear-gradient(132deg, #F5EFB0 79.5%, #E0D88A 85.97%), linear-gradient(135deg, transparent 0%, #E8E0A0 100%)",
+                      backgroundOrigin: "padding-box, border-box",
+                      backgroundClip: "padding-box, border-box",
+                    }}
+                  />
+                </div>
+                <span className="text-[11px] font-medium text-text-secondary">Sticky Notes</span>
+              </button>
+            </div>
+          </div>
+
           {/* Font — common to all tabs, sits above sections */}
           <div {...hlWrap("font")} className="mb-[16px]">
             <SettingsSelectField
@@ -371,7 +472,7 @@ export function PreviewEditor({
             </div>
           </div>
 
-          {/* ── Theme section ── */}
+          {/* ── Theme section (hidden for now — re-enable later) ──
           <SectionHeader label="Theme" />
           <div className="space-y-[16px]">
             <div {...hlWrap("background")}>
@@ -436,6 +537,7 @@ export function PreviewEditor({
               </>
             )}
           </div>
+          */}
         </div>
 
         {/* Right panel — preview (60%), sticky so it follows scroll */}
@@ -443,11 +545,12 @@ export function PreviewEditor({
           {/* Sticky action button — only shows when original header scrolls out of view */}
           {headerHidden && (
             <div className="flex justify-end mb-[12px]">
+              {/* Widget embed button (commented out — widget tab disabled)
               {tab === "widget" ? (
                 <Button size="small" onClick={() => setShowEmbed(true)}>
                   Get Embed Code
                 </Button>
-              ) : (
+              ) : ( */}
                 <Button
                   size="small"
                   onClick={handlePublish}
@@ -456,27 +559,23 @@ export function PreviewEditor({
                 >
                   {publishing ? "Publishing..." : needsPublish ? "Publish" : "Published"}
                 </Button>
-              )}
+              {/* )} */}
             </div>
           )}
           <div
-            className={`rounded-card border border-border bg-bg-card shadow-card p-[20px] relative overflow-hidden ${tab !== "widget" ? "min-h-[480px]" : ""}`}
+            className="rounded-card border border-border bg-bg-card shadow-card p-[20px] relative overflow-hidden min-h-[480px]"
             style={{
-              backgroundColor: tab === "collection" ? "#FBFBFB" : (tab === "widget" && settings.widget_transparent_bg) ? "transparent" : settings.background_color,
-              backgroundImage: (tab === "widget" && settings.widget_transparent_bg)
-                ? "linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)"
-                : undefined,
-              backgroundSize: (tab === "widget" && settings.widget_transparent_bg) ? "16px 16px" : undefined,
-              backgroundPosition: (tab === "widget" && settings.widget_transparent_bg) ? "0 0, 0 8px, 8px -8px, -8px 0px" : undefined,
+              backgroundColor: tab === "collection" ? "#FBFBFB" : settings.background_color,
               fontFamily,
             }}
           >
             {tab === "wall" && (
               <WallPreview settings={settings} entries={entries} fontFamily={fontFamily} wallUrl={wallUrl} highlightZones={hasActiveHighlight ? activeZones : null} />
             )}
+            {/* Widget preview (commented out — widget tab disabled)
             {tab === "widget" && (
               <WidgetPreview settings={settings} entries={entries} fontFamily={fontFamily} highlightZones={hasActiveHighlight ? activeZones : null} />
-            )}
+            )} */}
             {tab === "collection" && (
               <CollectionPreview settings={settings} fontFamily={fontFamily} highlightZones={hasActiveHighlight ? activeZones : null} />
             )}
@@ -747,7 +846,10 @@ function WallPreview({
 
           {/* Signature cards — 2-column grid */}
           <div className="mt-[16px] grid grid-cols-2 gap-[12px]" style={zoneStyle("cards")}>
-            {sampleEntries.map((entry) => (
+            {sampleEntries.map((entry) =>
+              settings.wall_style === "sticky" ? (
+                <StickyPreviewCard key={entry.id} entry={entry} fontFamily={fontFamily} zoneStyle={zoneStyle} />
+              ) : (
               <div
                 key={entry.id}
                 className="flex flex-col relative overflow-hidden"
@@ -826,7 +928,8 @@ function WallPreview({
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            )}
           </div>
         </>
       ) : (
@@ -1246,11 +1349,57 @@ function CollectionPreview({
         style={{ opacity: highlightZones?.includes("bg") ? 0 : 1, transition: "opacity 0.2s ease" }}
       >
         <div className="flex flex-col gap-[12px] p-[16px]">
+          {/* Sticky color swatches (visual only in preview) */}
+          {settings.wall_style === "sticky" && (
+            <div className="flex items-center gap-[6px] justify-center" style={zoneStyle("canvas")}>
+              {["#F5F5F5", "#FFD0C8", "#FFE5CB", "#FFF9C6", "#D1F6D7", "#CBE9FF", "#E5D7FF", "#FFCBE9"].map((color) => {
+                const isSelected = color === "#FFF9C6";
+                const fl = stickyDarken(color, 0.05);
+                const fd = stickyDarken(color, 0.18);
+                const fs = stickyDarken(color, 0.10);
+                return (
+                  <div
+                    key={color}
+                    className="relative shrink-0 overflow-hidden"
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      backgroundColor: color,
+                      borderRadius: "3px 3px 8px 3px",
+                      outline: isSelected ? `1.5px solid ${settings.brand_color}` : "none",
+                      outlineOffset: "1.5px",
+                      boxShadow: "0 0.5px 1px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <div
+                      className="absolute bottom-0 right-0 pointer-events-none"
+                      style={{
+                        width: "6px",
+                        height: "6px",
+                        borderTopLeftRadius: "3px",
+                        border: "0.5px solid transparent",
+                        backgroundImage: `linear-gradient(132deg, ${fl} 79.5%, ${fd} 85.97%), linear-gradient(135deg, ${fs}00 0%, ${fs} 100%)`,
+                        backgroundOrigin: "padding-box, border-box",
+                        backgroundClip: "padding-box, border-box",
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div style={zoneStyle("canvas")}>
             <DrawingCanvas
               width={300}
               height={180}
               brandColor={settings.brand_color}
+              {...(settings.wall_style === "sticky" ? {
+                backgroundColor: STICKY_NOTE_COLOR,
+                showDotGrid: false,
+                showInsetShadow: false,
+                drawerColor: stickyDarken(STICKY_NOTE_COLOR, 0.05),
+              } : {})}
             />
           </div>
 
@@ -1296,6 +1445,7 @@ function CollectionPreview({
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
@@ -1399,5 +1549,108 @@ function CanvasPreviewIcon() {
       <path d="M9.66732 1.3335H6.33398V5.00016L9.66732 5.00016V1.3335Z" />
       <path d="M6.33398 9.66683V6.3335L9.66732 6.3335V9.66683L6.33398 9.66683Z" />
     </svg>
+  );
+}
+
+/* ─── Sticky note preview card (used in WallPreview when wall_style="sticky") ─── */
+
+const STICKY_NOTE_COLOR = "#FFF9C6";
+const STICKY_TEXT = "#5D4E37";
+const STICKY_TEXT_SECONDARY = "#8B7355";
+
+function stickyDarken(hex: string, amount: number): string {
+  const clean = hex.replace("#", "");
+  const r = Math.max(0, parseInt(clean.slice(0, 2), 16) - Math.round(255 * amount));
+  const g = Math.max(0, parseInt(clean.slice(2, 4), 16) - Math.round(255 * amount));
+  const b = Math.max(0, parseInt(clean.slice(4, 6), 16) - Math.round(255 * amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+function StickyPreviewCard({
+  entry,
+  fontFamily,
+  zoneStyle,
+}: {
+  entry: Entry;
+  fontFamily: string;
+  zoneStyle: (zone: string) => React.CSSProperties;
+}) {
+  const strokeObj = entry.stroke_data as Record<string, unknown> | null;
+  const cardColor = typeof strokeObj?.note_color === "string" ? strokeObj.note_color : STICKY_NOTE_COLOR;
+  const foldLight = stickyDarken(cardColor, 0.05);
+  const foldDark = stickyDarken(cardColor, 0.18);
+  const foldStroke = stickyDarken(cardColor, 0.10);
+
+  return (
+    <div
+      className="relative flex flex-col overflow-hidden"
+      style={{
+        backgroundColor: cardColor,
+        borderRadius: "8px 8px 20px 8px",
+        padding: "10px",
+        paddingBottom: "12px",
+        minHeight: "120px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+        ...zoneStyle("cards"),
+      }}
+    >
+      {/* Doodle area */}
+      <div className="w-full h-[40px] flex items-center justify-center">
+        <SignatureSample color={STICKY_TEXT} />
+      </div>
+
+      {/* Message */}
+      {entry.message && (
+        <p
+          className="text-[9px] mt-[6px] leading-[1.4]"
+          style={{
+            color: STICKY_TEXT,
+            opacity: 0.8,
+            fontFamily,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
+            overflow: "hidden",
+          }}
+        >
+          {entry.message}
+        </p>
+      )}
+
+      {/* Name + date */}
+      <div className="mt-auto pt-[6px]">
+        <span
+          className="text-[9px] font-semibold"
+          style={{ color: STICKY_TEXT, fontFamily }}
+        >
+          {entry.name}
+        </span>
+        <span
+          className="text-[7px] block mt-[1px]"
+          style={{ color: STICKY_TEXT_SECONDARY, opacity: 0.7 }}
+        >
+          {new Date(entry.created_at).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </span>
+      </div>
+
+      {/* Corner fold */}
+      <div
+        className="absolute bottom-0 right-0 pointer-events-none"
+        style={{
+          width: "14px",
+          height: "14px",
+          borderTopLeftRadius: "7px",
+          border: "0.5px solid transparent",
+          backgroundImage: `linear-gradient(132deg, ${foldLight} 79.5%, ${foldDark} 85.97%), linear-gradient(135deg, ${foldStroke}00 0%, ${foldStroke} 100%)`,
+          backgroundOrigin: "padding-box, border-box",
+          backgroundClip: "padding-box, border-box",
+          boxShadow: "-0.5px -0.5px 1px rgba(0,0,0,0.03), 1px 1.5px 2px rgba(0,0,0,0.06)",
+        }}
+      />
+    </div>
   );
 }
