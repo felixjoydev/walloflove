@@ -4,21 +4,21 @@
   font-family: "Scorekard";
   src: url("/fonts/Scorekard-Regular.otf") format("opentype");
   font-weight: 400;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Scorekard";
   src: url("/fonts/Scorekard-Semibold.otf") format("opentype");
   font-weight: 600;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Scorekard";
   src: url("/fonts/Scorekard-Bold.otf") format("opentype");
   font-weight: 700;
-  font-display: swap;
+  font-display: optional;
 }
 
 @theme {
