@@ -18,11 +18,37 @@ export function IconSidebar() {
   if (!guestbookId) return null;
 
   return (
-    <aside
-      className="fixed top-1/2 -translate-y-1/2 z-10"
-      style={{ left: "max(16px, calc(50% - 488px))" }}
-    >
-      <nav className="flex flex-col items-center gap-[8px] rounded-card border border-border bg-bg-nav p-[8px] shadow-card">
+    <>
+      {/* Desktop: fixed vertical sidebar */}
+      <aside
+        className="hidden lg:block fixed top-1/2 -translate-y-1/2 z-10"
+        style={{ left: "max(16px, calc(50% - 488px))" }}
+      >
+        <nav className="flex flex-col items-center gap-[8px] rounded-card border border-border bg-bg-nav p-[8px] shadow-card">
+          {navItems.map((item) => {
+            const href = `/guestbooks/${guestbookId}/${item.segment}`;
+            const isActive = pathname.includes(`/${item.segment}`);
+
+            return (
+              <Link
+                key={item.segment}
+                href={href}
+                title={item.tooltip}
+                className={`flex h-[40px] w-[40px] items-center justify-center rounded-icon transition-colors ${
+                  isActive
+                    ? "bg-accent text-white"
+                    : "text-white hover:bg-white/10"
+                }`}
+              >
+                <item.icon />
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* Mobile: fixed horizontal bottom bar */}
+      <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 mb-[12px] z-30 flex items-center gap-[8px] rounded-card border border-border bg-bg-nav p-[8px] shadow-card">
         {navItems.map((item) => {
           const href = `/guestbooks/${guestbookId}/${item.segment}`;
           const isActive = pathname.includes(`/${item.segment}`);
@@ -43,7 +69,7 @@ export function IconSidebar() {
           );
         })}
       </nav>
-    </aside>
+    </>
   );
 }
 

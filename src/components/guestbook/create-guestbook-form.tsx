@@ -41,7 +41,7 @@ export function CreateGuestbookForm() {
             {/* Logo + Heading */}
             <div className="flex flex-col gap-[24px]">
               <div className="w-[80px] h-[60px]">
-                <img src="/logo.svg" alt="Walloflove" className="w-full h-full" />
+                <img src="/logo.svg" alt="Guestbook" className="w-full h-full" />
               </div>
               <h1 className="text-heading font-semibold leading-none text-text-primary">
                 Create Guestbook

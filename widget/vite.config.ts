@@ -8,7 +8,7 @@ export default defineConfig({
     emptyOutDir: true,
     lib: {
       entry: resolve(__dirname, "src/widget.ts"),
-      name: "SignBoard",
+      name: "Guestbook",
       formats: ["iife"],
       fileName: () => "widget.js",
     },

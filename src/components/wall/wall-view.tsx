@@ -332,6 +332,12 @@ function CollectModal({
     setDrawingData(data);
   }, []);
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -391,7 +397,7 @@ function CollectModal({
 
       {/* Modal content */}
       <div
-        className="relative w-full max-w-md"
+        className="relative w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-y-contain rounded-card"
         onClick={(e) => e.stopPropagation()}
         style={{ fontFamily }}
       >

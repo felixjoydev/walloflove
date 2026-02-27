@@ -42,7 +42,7 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
         {/* Logo */}
         <div className="flex h-14 items-center border-b border-neutral-200 px-5">
           <Link href="/guestbooks" className="text-lg font-bold">
-            SignBoard
+            Guestbook
           </Link>
         </div>
 

@@ -175,7 +175,7 @@ interface DrawingCanvasProps {
 
 export function DrawingCanvas({
   width = 400,
-  height = 250,
+  height: heightProp = 250,
   backgroundColor = "#F6F6F6",
   onChange,
   onEmptyChange,
@@ -196,6 +196,13 @@ export function DrawingCanvas({
       ? 1
       : Math.min(window.devicePixelRatio || 1, 2)
   );
+
+  // Taller canvas on mobile for more drawing space
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 1024);
+  }, []);
+  const height = isMobile ? Math.max(heightProp, 300) : heightProp;
 
   const [state, dispatch] = useReducer(reducer, {
     strokes: [],
@@ -364,6 +371,7 @@ export function DrawingCanvas({
           backgroundColor,
           width: "100%",
           aspectRatio: `${width}/${height}`,
+          touchAction: "none",
           boxShadow: showInsetShadow ? "0 2px 2px 0 rgba(0, 0, 0, 0.10) inset" : "none",
         }}
       >

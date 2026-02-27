@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SignBoard — Hand-Drawn Guestbook Widget",
+  title: "Guestbook — Hand-Drawn Guestbook Widget",
   description:
     "An embeddable guestbook widget where visitors leave hand-drawn signatures, doodles, and messages.",
 };
