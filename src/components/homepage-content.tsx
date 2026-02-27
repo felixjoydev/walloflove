@@ -106,13 +106,13 @@ export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
                 bottom, there it was.{" "}
                 <Marker variant="highlight">Sign my guestbook.</Marker>
               </p>
-              <div className="mt-2 inline-flex items-center justify-center bg-accent border border-[#2E2072] border-b-[3px] p-1.5">
+              <a href="https://www.guestbook.cv/wall/guestbook" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center justify-center bg-accent border border-[#2E2072] border-b-[3px] p-1.5 hover:opacity-90 transition-opacity cursor-pointer">
                 <div className="flex items-center justify-center border border-dashed border-[#2E2072] px-5 py-0.5">
                   <span className="text-[13px] font-medium text-[#2E2072]">
                     Sign my Guestbook
                   </span>
                 </div>
-              </div>
+              </a>
             </div>
             <p>
               You&apos;d type your{" "}
