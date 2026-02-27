@@ -38,6 +38,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${GeistSans.className} ${GeistMono.variable}`}>
+      <head>
+        <link rel="preload" href="/fonts/Scorekard-Regular.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Scorekard-Semibold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Scorekard-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-screen bg-white text-neutral-900 antialiased">
         {children}
         <Toaster position="bottom-right" richColors />
