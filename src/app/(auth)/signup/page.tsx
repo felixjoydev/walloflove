@@ -21,12 +21,9 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
     });
 
     if (error) {
@@ -35,8 +32,13 @@ export default function SignupPage() {
       return;
     }
 
-    toast.success("Check your email to confirm your account.");
-    router.push("/login");
+    // If email confirmation is disabled, Supabase returns a session directly
+    if (data.session) {
+      router.push("/");
+    } else {
+      toast.success("Check your email to confirm your account.");
+      router.push("/login");
+    }
   }
 
   async function handleGoogleSignup() {
