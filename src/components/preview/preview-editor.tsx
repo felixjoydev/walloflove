@@ -55,13 +55,13 @@ export function PreviewEditor({
   const router = useRouter();
   const guestbook = useGuestbookContext();
   const [settings, setSettings] = useState<Required<GuestbookSettings>>(guestbook.settings);
-  const savedSettings = useRef<Required<GuestbookSettings>>(guestbook.settings);
+  const lastSavedRef = useRef<Required<GuestbookSettings>>(guestbook.settings);
+  const publishedSettingsRef = useRef<Required<GuestbookSettings>>(guestbook.settings);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tab, setTab] = useState<PreviewTab>("wall");
-  const [saving, setSaving] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
   const [showPublishSettings, setShowPublishSettings] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [needsPublish, setNeedsPublish] = useState(false);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
 
@@ -73,37 +73,57 @@ export function PreviewEditor({
 
   const currentUrl = tab === "collection" ? collectUrl : wallUrl;
 
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings.current);
+  const hasUnpublishedChanges = JSON.stringify(settings) !== JSON.stringify(publishedSettingsRef.current);
 
   function update<K extends keyof GuestbookSettings>(key: K, value: GuestbookSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleSave() {
-    setSaving(true);
-    const result = await saveThemeAction(guestbookId, settings);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Saved");
-      savedSettings.current = settings;
-      setNeedsPublish(true);
-    }
-    setSaving(false);
-    router.refresh();
-  }
+  // Auto-save: debounce 800ms after every settings change
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      if (JSON.stringify(settings) === JSON.stringify(lastSavedRef.current)) return;
+      const result = await saveThemeAction(guestbookId, settings);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        lastSavedRef.current = settings;
+      }
+    }, 800);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [settings, guestbookId]);
 
   async function handlePublish() {
-    if (isPublished && !needsPublish) return;
+    if (isPublished && !hasUnpublishedChanges) return;
     setPublishing(true);
+
+    // Cancel pending debounce and flush-save if needed
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (JSON.stringify(settings) !== JSON.stringify(lastSavedRef.current)) {
+      const saveResult = await saveThemeAction(guestbookId, settings);
+      if (saveResult.error) {
+        toast.error(saveResult.error);
+        setPublishing(false);
+        return;
+      }
+      lastSavedRef.current = settings;
+    }
+
     const result = await publishAction(guestbookId);
     if (result.error) {
       toast.error(result.error);
     } else {
       toast.success("Published!");
-      setNeedsPublish(false);
+      publishedSettingsRef.current = settings;
       if (!isPublished) {
-        // First publish — refresh to get the new slug into context
         router.refresh();
       }
     }
@@ -170,7 +190,7 @@ export function PreviewEditor({
   }
 
   return (
-    <div className={`flex-1 flex flex-col ${hasChanges ? "-mb-8" : ""}`}>
+    <div className="flex-1 flex flex-col">
       {/* Tabs */}
       <div className="flex gap-[4px] border-b border-border">
         {tabs.map((t) => (
@@ -237,14 +257,14 @@ export function PreviewEditor({
           <Button
             size="small"
             onClick={handlePublish}
-            disabled={publishing || (isPublished && !needsPublish)}
+            disabled={publishing || (isPublished && !hasUnpublishedChanges)}
             className="shrink-0"
           >
             {publishing
               ? "Publishing..."
               : !isPublished
                 ? "Publish"
-                : needsPublish
+                : hasUnpublishedChanges
                   ? "Publish"
                   : "Published"}
           </Button>
@@ -264,14 +284,14 @@ export function PreviewEditor({
                 onClick={() => update("wall_style", "notebook")}
                 className="flex-1 flex flex-col items-center gap-[8px] rounded-card p-[12px] border cursor-pointer transition-all"
                 style={{
-                  borderColor: settings.wall_style === "notebook" ? settings.brand_color : "var(--color-border)",
-                  boxShadow: settings.wall_style === "notebook" ? `0 0 0 1px ${settings.brand_color}` : "none",
+                  borderColor: settings.wall_style === "notebook" ? "var(--color-accent)" : "var(--color-border)",
+                  boxShadow: settings.wall_style === "notebook" ? "0 0 0 1px var(--color-accent)" : "none",
                   backgroundColor: "var(--color-bg-card)",
                 }}
               >
                 {/* Mini notebook card */}
                 <div
-                  className="w-[56px] h-[40px] relative overflow-hidden"
+                  className="w-[40px] h-[40px] relative overflow-hidden"
                   style={{
                     borderRadius: "6px",
                     backgroundColor: "#ffffff",
@@ -283,7 +303,7 @@ export function PreviewEditor({
                     {Array.from({ length: 4 }).map((_, i) => (
                       <div
                         key={i}
-                        className="w-[5px] h-[5px] rounded-full"
+                        className="w-[4px] h-[4px] rounded-full"
                         style={{
                           backgroundColor: "#EAEAEA",
                           boxShadow: "0 0.5px 1px 0 rgba(0,0,0,0.1) inset",
@@ -292,9 +312,10 @@ export function PreviewEditor({
                     ))}
                   </div>
                   {/* Mini lines to suggest content */}
-                  <div className="absolute left-[14px] right-[6px] top-[8px] flex flex-col gap-[3px]">
+                  <div className="absolute left-[12px] right-[5px] top-[8px] flex flex-col gap-[3px]">
                     <div className="h-[2px] rounded-full bg-[#E0E0E0] w-full" />
                     <div className="h-[2px] rounded-full bg-[#E0E0E0] w-[70%]" />
+                    <div className="h-[2px] rounded-full bg-[#E0E0E0] w-[50%]" />
                   </div>
                 </div>
                 <span className="text-[11px] font-medium text-text-secondary">Notebook</span>
@@ -306,16 +327,16 @@ export function PreviewEditor({
                 onClick={() => update("wall_style", "sticky")}
                 className="flex-1 flex flex-col items-center gap-[8px] rounded-card p-[12px] border cursor-pointer transition-all"
                 style={{
-                  borderColor: settings.wall_style === "sticky" ? settings.brand_color : "var(--color-border)",
-                  boxShadow: settings.wall_style === "sticky" ? `0 0 0 1px ${settings.brand_color}` : "none",
+                  borderColor: settings.wall_style === "sticky" ? "var(--color-accent)" : "var(--color-border)",
+                  boxShadow: settings.wall_style === "sticky" ? "0 0 0 1px var(--color-accent)" : "none",
                   backgroundColor: "var(--color-bg-card)",
                 }}
               >
                 {/* Mini sticky note */}
                 <div
-                  className="w-[56px] h-[40px] relative overflow-hidden"
+                  className="w-[40px] h-[40px] relative overflow-hidden"
                   style={{
-                    borderRadius: "4px 4px 12px 4px",
+                    borderRadius: "4px 4px 10px 4px",
                     backgroundColor: "#FFF9C6",
                     boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
                   }}
@@ -324,14 +345,15 @@ export function PreviewEditor({
                   <div className="absolute left-[6px] right-[6px] top-[8px] flex flex-col gap-[3px]">
                     <div className="h-[2px] rounded-full w-full" style={{ backgroundColor: "#E6DBA0" }} />
                     <div className="h-[2px] rounded-full w-[60%]" style={{ backgroundColor: "#E6DBA0" }} />
+                    <div className="h-[2px] rounded-full w-[40%]" style={{ backgroundColor: "#E6DBA0" }} />
                   </div>
                   {/* Mini fold */}
                   <div
                     className="absolute bottom-0 right-0 pointer-events-none"
                     style={{
-                      width: "10px",
-                      height: "10px",
-                      borderTopLeftRadius: "5px",
+                      width: "9px",
+                      height: "9px",
+                      borderTopLeftRadius: "4px",
                       border: "0.5px solid transparent",
                       backgroundImage: "linear-gradient(132deg, #F5EFB0 79.5%, #E0D88A 85.97%), linear-gradient(135deg, transparent 0%, #E8E0A0 100%)",
                       backgroundOrigin: "padding-box, border-box",
@@ -535,7 +557,7 @@ export function PreviewEditor({
         </div>
 
         {/* Right panel — preview (60%), sticky so it follows scroll */}
-        <div className="w-full lg:w-[60%] self-start sticky top-[4px]">
+        <div className="w-full lg:w-[60%] self-start sticky top-[64px]">
           <div
             className="rounded-card border border-border bg-bg-card shadow-card p-[20px] relative overflow-hidden min-h-[480px]"
             style={{
@@ -579,23 +601,6 @@ export function PreviewEditor({
         />
       )}
 
-      {/* Spacer pushes save bar to bottom */}
-      <div className="flex-1" />
-
-      {/* Sticky save bar — appears only when settings differ from saved */}
-      {hasChanges && (
-        <div className="sticky bottom-0 z-50">
-          <div
-            className="h-[24px]"
-            style={{ background: "linear-gradient(to top, var(--color-bg-page) 0%, transparent 100%)" }}
-          />
-          <div className="bg-bg-page pb-[16px] pt-[8px] flex justify-start">
-            <Button size="small" onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : "Save changes"}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -620,7 +625,7 @@ function WallPreview({
 
   function zoneStyle(zone: string): React.CSSProperties {
     if (!highlightZones) return { transition: "opacity 0.2s ease" };
-    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.15;
+    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.3;
     return {
       opacity: highlightZones.includes(zone) ? 1 : dimOpacity,
       transition: "opacity 0.2s ease",
@@ -656,7 +661,7 @@ function WallPreview({
     // Non-highlighted zone when frame is active → dim (text dims for button-color)
     if (!highlighted && highlightZones.includes("cta-frame")) {
       return {
-        opacity: 0.15,
+        opacity: 0.3,
         transition: "opacity 0.2s ease",
       };
     }
@@ -1069,7 +1074,7 @@ function WidgetPreview({
 }) {
   function zoneStyle(zone: string): React.CSSProperties {
     if (!highlightZones) return { transition: "opacity 0.2s ease" };
-    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.15;
+    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.3;
     return {
       opacity: highlightZones.includes(zone) ? 1 : dimOpacity,
       transition: "opacity 0.2s ease",
@@ -1097,7 +1102,7 @@ function WidgetPreview({
     }
     if (!highlighted && highlightZones.includes("cta-frame")) {
       return {
-        opacity: 0.15,
+        opacity: 0.3,
         transition: "opacity 0.2s ease",
       };
     }
@@ -1279,7 +1284,7 @@ function CollectionPreview({
 }) {
   function zoneStyle(zone: string): React.CSSProperties {
     if (!highlightZones) return { transition: "opacity 0.2s ease" };
-    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.15;
+    const dimOpacity = highlightZones.includes("bg") ? 0 : 0.3;
     return {
       opacity: highlightZones.includes(zone) ? 1 : dimOpacity,
       transition: "opacity 0.2s ease",

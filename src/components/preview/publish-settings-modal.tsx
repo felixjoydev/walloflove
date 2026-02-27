@@ -298,6 +298,7 @@ export function PublishSettingsModal({
               />
               <SettingsUploadField
                 label="OG Image"
+                hint="1200 x 630px"
                 value={ogImageUrl}
                 onChange={async (file) => {
                   const blobUrl = URL.createObjectURL(file);

@@ -127,6 +127,7 @@ export function AnalyticsChart({ data, timeRange, onTimeRangeChange }: Analytics
               stroke="#9580FF"
               strokeWidth={2}
               fill="url(#chartGradient)"
+              animationDuration={500}
               dot={false}
               activeDot={{
                 r: 4,

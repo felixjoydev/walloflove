@@ -224,11 +224,13 @@ export function SettingsUploadField({
   value,
   onChange,
   onRemove,
+  hint,
 }: {
   label: string;
   value?: string | null;
   onChange: (file: File) => void;
   onRemove?: () => void;
+  hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -273,11 +275,14 @@ export function SettingsUploadField({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="w-full h-full min-h-[120px] flex items-center justify-center cursor-pointer"
+            className="w-full h-full min-h-[120px] flex flex-col items-center justify-center gap-[4px] cursor-pointer"
           >
-            <span className="text-body-sm text-text-placeholder">
+            <span className="text-body-sm font-medium text-accent hover:text-accent-hover transition-colors">
               Click to upload
             </span>
+            {hint && (
+              <span className="text-[11px] text-text-placeholder">{hint}</span>
+            )}
           </button>
         )}
         <input
