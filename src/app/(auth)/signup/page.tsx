@@ -44,7 +44,8 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/");
+    router.push("/guestbooks");
+    router.refresh();
   }
 
   async function handleGoogleSignup() {
