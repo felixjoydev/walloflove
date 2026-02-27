@@ -13,6 +13,7 @@ import { checkDns, buildDnsInstructions } from "@/lib/domain/dns-check";
 import { invalidateDomainCache } from "@/lib/domain/cache";
 import { getDomainOpLimiter } from "@/lib/utils/rate-limit";
 import type { DnsRecord, DomainVerificationData } from "@shared/types";
+import { parse as parseDomain } from "tldts";
 
 async function authAndOwnership(guestbookId: string) {
   const supabase = await createClient();
@@ -54,7 +55,11 @@ export async function addDomainAction(
 
   // If guestbook already has a different domain, remove it first
   if (guestbook.custom_domain && guestbook.custom_domain !== hostname) {
-    const existingIsApex = !guestbook.custom_domain.includes(".");
+    const existingParsed = parseDomain(guestbook.custom_domain);
+    const existingIsApex =
+      !!existingParsed.domain &&
+      Boolean(existingParsed.isIcann) &&
+      !existingParsed.subdomain;
     await removeDomainFromVercel(guestbook.custom_domain, existingIsApex);
     await invalidateDomainCache(guestbook.custom_domain);
   }

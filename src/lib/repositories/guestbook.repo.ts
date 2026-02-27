@@ -97,27 +97,15 @@ export async function updateGuestbookSettings(
   id: string,
   settings: Partial<GuestbookSettings>
 ) {
-  // Fetch existing settings so partial updates merge instead of replacing
-  const { data: existing } = await supabase
-    .from("guestbooks")
-    .select("settings")
-    .eq("id", id)
-    .single();
-
-  const merged = {
-    ...((existing?.settings as Record<string, unknown>) ?? {}),
-    ...(settings as Record<string, unknown>),
-  };
-
-  const { data, error } = await supabase
-    .from("guestbooks")
-    .update({ settings: merged })
-    .eq("id", id)
-    .select("settings")
-    .single();
+  // Atomic JSONB merge at DB level avoids read-modify-write race conditions.
+  const { data, error } = await supabase.rpc("merge_guestbook_settings", {
+    guestbook_id: id,
+    new_settings:
+      settings as unknown as Database["public"]["Tables"]["guestbooks"]["Row"]["settings"],
+  });
 
   if (error) throw error;
-  return data?.settings;
+  return data;
 }
 
 /** Write draft theme settings (auto-save target). Full replacement, no merge. */

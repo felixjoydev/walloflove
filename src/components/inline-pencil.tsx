@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useId } from "react";
+import { useEffect, useRef, useId } from "react";
 
 const COLORS = [
   "#FF5159", "#D048FF", "#6C73FF", "#407CFF",
@@ -18,21 +18,22 @@ export function InlinePencil() {
   const indexRef = useRef(0);
   const lastRef = useRef(0);
 
-  const tick = useCallback((time: number) => {
-    if (time - lastRef.current >= INTERVAL) {
-      lastRef.current = time;
-      indexRef.current = (indexRef.current + 1) % COLORS.length;
-      if (nibRef.current) {
-        nibRef.current.setAttribute("fill", COLORS[indexRef.current]);
-      }
-    }
-    requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
-    const id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [tick]);
+    let rafId = 0;
+    const tick = (time: number) => {
+      if (time - lastRef.current >= INTERVAL) {
+        lastRef.current = time;
+        indexRef.current = (indexRef.current + 1) % COLORS.length;
+        if (nibRef.current) {
+          nibRef.current.setAttribute("fill", COLORS[indexRef.current]);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <span className="inline-block align-middle rotate-[20deg]">

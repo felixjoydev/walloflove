@@ -112,7 +112,10 @@ export function WallCanvas({
   useEffect(() => {
     if (entries.length > 0 && !centeredRef.current) {
       centeredRef.current = true;
-      setOffset(getCenterOffset());
+      const rafId = requestAnimationFrame(() => {
+        setOffset(getCenterOffset());
+      });
+      return () => cancelAnimationFrame(rafId);
     }
   }, [entries.length, getCenterOffset]);
 

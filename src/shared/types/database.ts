@@ -206,6 +206,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      merge_guestbook_settings: {
+        Args: { guestbook_id: string; new_settings: Json };
+        Returns: Json;
+      };
       get_slug_by_domain: {
         Args: { lookup_domain: string };
         Returns: { slug: string; guestbook_id: string }[];

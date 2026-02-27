@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 
 const buttons = [
   {
@@ -28,25 +28,26 @@ export function CyclingCtaButtons() {
   const indexRef = useRef(0);
   const lastTimeRef = useRef(0);
 
-  const tick = useCallback((time: number) => {
-    if (time - lastTimeRef.current >= INTERVAL_MS) {
-      lastTimeRef.current = time;
-      indexRef.current = (indexRef.current + 1) % buttons.length;
-      const button = buttons[indexRef.current];
-      const el = spanRef.current;
-      if (el) {
-        el.textContent = button.label;
-        el.className = `inline-block px-6 py-2.5 text-[14px] font-medium ${button.className}`;
-        el.style.fontFamily = button.fontFamily;
-      }
-    }
-    requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
-    const id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [tick]);
+    let rafId = 0;
+    const tick = (time: number) => {
+      if (time - lastTimeRef.current >= INTERVAL_MS) {
+        lastTimeRef.current = time;
+        indexRef.current = (indexRef.current + 1) % buttons.length;
+        const button = buttons[indexRef.current];
+        const el = spanRef.current;
+        if (el) {
+          el.textContent = button.label;
+          el.className = `inline-block px-6 py-2.5 text-[14px] font-medium ${button.className}`;
+          el.style.fontFamily = button.fontFamily;
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   const button = buttons[0];
 

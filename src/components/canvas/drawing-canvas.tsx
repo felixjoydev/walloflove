@@ -2,6 +2,7 @@
 
 import {
   useRef,
+  useState,
   useReducer,
   useEffect,
   useCallback,
@@ -189,8 +190,12 @@ export function DrawingCanvas({
   const svgRef = useRef<HTMLDivElement>(null);
   const currentStrokeRef = useRef<Stroke | null>(null);
   const activePointerRef = useRef<number | null>(null);
-  const dprRef = useRef(1);
   const prevEmptyRef = useRef(true);
+  const [dpr] = useState(() =>
+    typeof window === "undefined"
+      ? 1
+      : Math.min(window.devicePixelRatio || 1, 2)
+  );
 
   const [state, dispatch] = useReducer(reducer, {
     strokes: [],
@@ -209,12 +214,9 @@ export function DrawingCanvas({
 
   // Store latest state in ref for pointer event handlers (avoids stale closures)
   const stateRef = useRef(state);
-  stateRef.current = state;
-
-  // Initialize DPR
   useEffect(() => {
-    dprRef.current = Math.min(window.devicePixelRatio || 1, 2);
-  }, []);
+    stateRef.current = state;
+  }, [state]);
 
   // Rebuild SVG from committed strokes (when not actively drawing)
   const rebuildSvg = useCallback(
@@ -381,8 +383,8 @@ export function DrawingCanvas({
         {/* Invisible canvas for pointer capture */}
         <canvas
           ref={canvasRef}
-          width={width * (dprRef.current || 1)}
-          height={height * (dprRef.current || 1)}
+          width={width * dpr}
+          height={height * dpr}
           style={{
             width: "100%",
             height: "100%",

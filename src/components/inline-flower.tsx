@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 
 // Simple flower: 5 petals + center circle + stem, all as strokes
 const PETALS = [
@@ -28,69 +28,70 @@ export function InlineFlower() {
   const startRef = useRef(0);
   const lengthsRef = useRef<number[]>([]);
 
-  const tick = useCallback((time: number) => {
-    if (!startRef.current) startRef.current = time;
-    const elapsed = (time - startRef.current) % TOTAL_CYCLE;
-
-    // Calculate lengths on first run
-    if (lengthsRef.current.length === 0) {
-      lengthsRef.current = pathRefs.current.map(
-        (p) => p?.getTotalLength() ?? 100
-      );
-    }
-
-    const pathCount = ALL_PATHS.length;
-    const perPath = DRAW_DURATION / (pathCount + 1); // +1 for center circle
-
-    for (let i = 0; i < pathCount; i++) {
-      const el = pathRefs.current[i];
-      if (!el) continue;
-      const len = lengthsRef.current[i];
-      const pathStart = i * perPath;
-
-      if (elapsed < DRAW_DURATION) {
-        const pathProgress = Math.max(
-          0,
-          Math.min(1, (elapsed - pathStart) / perPath)
-        );
-        el.style.strokeDasharray = String(len);
-        el.style.strokeDashoffset = String(len * (1 - pathProgress));
-        el.style.opacity = "1";
-      } else if (elapsed < DRAW_DURATION + HOLD_DURATION) {
-        el.style.strokeDashoffset = "0";
-        el.style.opacity = "1";
-      } else {
-        const fadeProgress =
-          (elapsed - DRAW_DURATION - HOLD_DURATION) / FADE_DURATION;
-        el.style.opacity = String(1 - fadeProgress);
-      }
-    }
-
-    // Center circle
-    if (circleRef.current) {
-      const circleStart = pathCount * perPath;
-      if (elapsed < DRAW_DURATION) {
-        const circleProgress = Math.max(
-          0,
-          Math.min(1, (elapsed - circleStart) / perPath)
-        );
-        circleRef.current.style.opacity = String(circleProgress);
-      } else if (elapsed < DRAW_DURATION + HOLD_DURATION) {
-        circleRef.current.style.opacity = "1";
-      } else {
-        const fadeProgress =
-          (elapsed - DRAW_DURATION - HOLD_DURATION) / FADE_DURATION;
-        circleRef.current.style.opacity = String(1 - fadeProgress);
-      }
-    }
-
-    requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
-    const id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [tick]);
+    let rafId = 0;
+    const tick = (time: number) => {
+      if (!startRef.current) startRef.current = time;
+      const elapsed = (time - startRef.current) % TOTAL_CYCLE;
+
+      // Calculate lengths on first run
+      if (lengthsRef.current.length === 0) {
+        lengthsRef.current = pathRefs.current.map(
+          (p) => p?.getTotalLength() ?? 100
+        );
+      }
+
+      const pathCount = ALL_PATHS.length;
+      const perPath = DRAW_DURATION / (pathCount + 1); // +1 for center circle
+
+      for (let i = 0; i < pathCount; i++) {
+        const el = pathRefs.current[i];
+        if (!el) continue;
+        const len = lengthsRef.current[i];
+        const pathStart = i * perPath;
+
+        if (elapsed < DRAW_DURATION) {
+          const pathProgress = Math.max(
+            0,
+            Math.min(1, (elapsed - pathStart) / perPath)
+          );
+          el.style.strokeDasharray = String(len);
+          el.style.strokeDashoffset = String(len * (1 - pathProgress));
+          el.style.opacity = "1";
+        } else if (elapsed < DRAW_DURATION + HOLD_DURATION) {
+          el.style.strokeDashoffset = "0";
+          el.style.opacity = "1";
+        } else {
+          const fadeProgress =
+            (elapsed - DRAW_DURATION - HOLD_DURATION) / FADE_DURATION;
+          el.style.opacity = String(1 - fadeProgress);
+        }
+      }
+
+      // Center circle
+      if (circleRef.current) {
+        const circleStart = pathCount * perPath;
+        if (elapsed < DRAW_DURATION) {
+          const circleProgress = Math.max(
+            0,
+            Math.min(1, (elapsed - circleStart) / perPath)
+          );
+          circleRef.current.style.opacity = String(circleProgress);
+        } else if (elapsed < DRAW_DURATION + HOLD_DURATION) {
+          circleRef.current.style.opacity = "1";
+        } else {
+          const fadeProgress =
+            (elapsed - DRAW_DURATION - HOLD_DURATION) / FADE_DURATION;
+          circleRef.current.style.opacity = String(1 - fadeProgress);
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <span className="inline-block align-middle -mx-1">

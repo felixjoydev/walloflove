@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useId } from "react";
+import { useEffect, useRef, useId } from "react";
 
 const COLORS = ["#FFF9C6", "#FFD6E0", "#D4F0FF", "#D5F5E3", "#F3E5F5", "#FFE0B2"];
 // Pre-computed darker fold colors for each
@@ -20,23 +20,24 @@ export function InlineStickyNote() {
   const indexRef = useRef(0);
   const lastRef = useRef(0);
 
-  const tick = useCallback((time: number) => {
-    if (time - lastRef.current >= INTERVAL) {
-      lastRef.current = time;
-      indexRef.current = (indexRef.current + 1) % COLORS.length;
-      const i = indexRef.current;
-      if (bodyRef.current) bodyRef.current.setAttribute("fill", COLORS[i]);
-      if (fold0aRef.current) fold0aRef.current.setAttribute("stop-color", FOLD_COLORS[i]);
-      if (fold1bRef.current) fold1bRef.current.setAttribute("stop-color", FOLD_MID[i]);
-      if (fold2bRef.current) fold2bRef.current.setAttribute("stop-color", FOLD_COLORS[i]);
-    }
-    requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
-    const id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [tick]);
+    let rafId = 0;
+    const tick = (time: number) => {
+      if (time - lastRef.current >= INTERVAL) {
+        lastRef.current = time;
+        indexRef.current = (indexRef.current + 1) % COLORS.length;
+        const i = indexRef.current;
+        if (bodyRef.current) bodyRef.current.setAttribute("fill", COLORS[i]);
+        if (fold0aRef.current) fold0aRef.current.setAttribute("stop-color", FOLD_COLORS[i]);
+        if (fold1bRef.current) fold1bRef.current.setAttribute("stop-color", FOLD_MID[i]);
+        if (fold2bRef.current) fold2bRef.current.setAttribute("stop-color", FOLD_COLORS[i]);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <span className="inline-block align-middle">

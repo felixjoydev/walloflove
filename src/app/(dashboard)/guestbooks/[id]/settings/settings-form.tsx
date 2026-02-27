@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useGuestbookContext } from "@/components/providers/guestbook-provider";
@@ -33,8 +33,10 @@ export function SettingsForm() {
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [domainDnsRecords, setDomainDnsRecords] = useState<DnsRecord[]>([]);
 
-  const savedName = useRef(guestbook.name);
-  const savedSettings = useRef(guestbook.settings);
+  const [savedName, setSavedName] = useState(guestbook.name);
+  const [savedModerationMode, setSavedModerationMode] = useState(
+    guestbook.settings.moderation_mode
+  );
 
   // Load DNS records when domain tab is active and a domain is connected
   useEffect(() => {
@@ -48,8 +50,7 @@ export function SettingsForm() {
   }, [tab, guestbook.customDomain, guestbook.id]);
 
   const hasChanges =
-    name !== savedName.current ||
-    JSON.stringify(settings) !== JSON.stringify(savedSettings.current);
+    name !== savedName || settings.moderation_mode !== savedModerationMode;
 
   function update<K extends keyof GuestbookSettings>(key: K, value: GuestbookSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -58,14 +59,14 @@ export function SettingsForm() {
   async function handleSave() {
     setSaving(true);
 
-    if (name.trim() && name.trim() !== savedName.current) {
+    if (name.trim() && name.trim() !== savedName) {
       const nameResult = await renameGuestbookAction(guestbook.id, name.trim());
       if (nameResult.error) {
         toast.error(nameResult.error);
         setSaving(false);
         return;
       }
-      savedName.current = name.trim();
+      setSavedName(name.trim());
     }
 
     const result = await saveSettingsAction(guestbook.id, {
@@ -76,7 +77,7 @@ export function SettingsForm() {
       toast.error(result.error);
     } else {
       toast.success("Settings saved");
-      savedSettings.current = { ...settings };
+      setSavedModerationMode(settings.moderation_mode);
     }
 
     setSaving(false);

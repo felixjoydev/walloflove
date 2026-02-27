@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 
 const scribblePath =
   "M2 8 Q6 2 10 8 Q14 14 18 6 Q22 -1 26 8 Q30 15 34 6 Q38 -1 42 8 Q46 14 50 6 Q54 0 58 8 Q62 14 66 6 Q70 0 74 8";
@@ -43,24 +43,25 @@ function TypingBoo() {
   const refs = useRef<(HTMLSpanElement | null)[]>([]);
   const startRef = useRef(0);
 
-  const tick = useCallback((time: number) => {
-    if (!startRef.current) startRef.current = time;
-    const elapsed = (time - startRef.current) % TOTAL_CYCLE;
-
-    for (let i = 0; i < letters.length; i++) {
-      const el = refs.current[i];
-      if (!el) continue;
-      const threshold = i * LETTER_DELAY;
-      el.style.visibility = elapsed >= threshold ? "visible" : "hidden";
-    }
-
-    requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
-    const id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [tick]);
+    let rafId = 0;
+    const tick = (time: number) => {
+      if (!startRef.current) startRef.current = time;
+      const elapsed = (time - startRef.current) % TOTAL_CYCLE;
+
+      for (let i = 0; i < letters.length; i++) {
+        const el = refs.current[i];
+        if (!el) continue;
+        const threshold = i * LETTER_DELAY;
+        el.style.visibility = elapsed >= threshold ? "visible" : "hidden";
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <span>

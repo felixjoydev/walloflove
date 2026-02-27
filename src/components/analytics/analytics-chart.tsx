@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -9,8 +9,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-
 interface TimeSeriesPoint {
   date: string;
   count: number;
@@ -121,20 +119,22 @@ export function AnalyticsChart({ pageViews, submissions, uniqueVisitors, timeRan
     uniqueVisitors: uniqueVisitors[i]?.count ?? 0,
   }));
 
-  const labelToIndexRef = useRef(new Map<string, number>());
-  labelToIndexRef.current.clear();
-  chartData.forEach((d, i) => {
-    if (!labelToIndexRef.current.has(d.label)) labelToIndexRef.current.set(d.label, i);
-  });
+  const labelToIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    chartData.forEach((d, i) => {
+      if (!map.has(d.label)) map.set(d.label, i);
+    });
+    return map;
+  }, [chartData]);
 
   const handleActiveLabel = useCallback((label: string | null) => {
     if (label) {
-      const idx = labelToIndexRef.current.get(label);
+      const idx = labelToIndex.get(label);
       setHoveredIndex(idx ?? null);
     } else {
       setHoveredIndex(null);
     }
-  }, []);
+  }, [labelToIndex]);
 
   return (
     <div className="rounded-input border border-border bg-bg-page shadow-card">

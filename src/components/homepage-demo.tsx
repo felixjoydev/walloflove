@@ -90,11 +90,7 @@ export function HomepageDemo() {
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
   const [showCollect, setShowCollect] = useState(false);
   const [expandedEntry, setExpandedEntry] = useState<DemoEntry | null>(null);
-  const [userEntries, setUserEntries] = useState<DemoEntry[]>([]);
-
-  useEffect(() => {
-    setUserEntries(loadStoredEntries());
-  }, []);
+  const [userEntries, setUserEntries] = useState<DemoEntry[]>(() => loadStoredEntries());
 
   const settings = { ...DEMO_SETTINGS, wall_style: wallStyle } as Required<GuestbookSettings>;
   const allEntries = [...userEntries, ...SEED_ENTRIES];
@@ -599,7 +595,10 @@ function DemoWallCanvas({
   useEffect(() => {
     if (entries.length > 0 && !centeredRef.current) {
       centeredRef.current = true;
-      setOffset(getCenterOffset());
+      const rafId = requestAnimationFrame(() => {
+        setOffset(getCenterOffset());
+      });
+      return () => cancelAnimationFrame(rafId);
     }
   }, [entries.length, getCenterOffset]);
 
