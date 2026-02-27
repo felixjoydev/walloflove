@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { listGuestbooks } from "@/lib/repositories/guestbook.repo";
+import { ScratchReveal } from "@/components/billing/scratch-reveal";
 
-export default async function GuestbooksPage() {
+export default async function WelcomePage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -11,10 +12,9 @@ export default async function GuestbooksPage() {
   if (!user) redirect("/login");
 
   const guestbooks = await listGuestbooks(supabase, user.id);
-
   if (guestbooks.length > 0) {
     redirect(`/guestbooks/${guestbooks[0].id}/inbox`);
   }
 
-  redirect("/welcome");
+  return <ScratchReveal />;
 }

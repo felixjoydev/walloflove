@@ -20,6 +20,11 @@ import { Input } from "@/components/ui/input";
 import { DrawingCanvas } from "@/components/canvas/drawing-canvas";
 import { getDotColor } from "@/lib/utils/color";
 import { EmbedModal } from "./embed-modal";
+import { PublishSettingsModal } from "./publish-settings-modal";
+
+function toSlug(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
 
 type PreviewTab = "wall" | "widget" | "collection";
 
@@ -54,34 +59,19 @@ export function PreviewEditor({
   const [tab, setTab] = useState<PreviewTab>("wall");
   const [saving, setSaving] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
+  const [showPublishSettings, setShowPublishSettings] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [needsPublish, setNeedsPublish] = useState(false);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [headerHidden, setHeaderHidden] = useState(false);
-  const headerBarRef = useRef<HTMLDivElement>(null);
-
-  // Track when the header bar scrolls out of view
-  useEffect(() => {
-    const el = headerBarRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setHeaderHidden(!entry.isIntersecting),
-      { threshold: 0 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.signboard.app";
-  const slug = guestbook.slug ?? guestbookId;
-  const wallUrl = `${appUrl}/wall/${slug}`;
-  const collectUrl = `${appUrl}/collect/${slug}`;
+  const isPublished = !!guestbook.slug;
+  const previewSlug = guestbook.slug ?? (toSlug(guestbook.name) || "your-guestbook");
+  const wallUrl = `${appUrl}/wall/${previewSlug}`;
+  const collectUrl = `${appUrl}/collect/${previewSlug}`;
 
   const currentUrl = tab === "collection" ? collectUrl : wallUrl;
-
-  // Consider "published" if slug exists (refine later with actual published state)
-  const isPublished = !!guestbook.slug;
 
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings.current);
 
@@ -104,7 +94,7 @@ export function PreviewEditor({
   }
 
   async function handlePublish() {
-    if (!needsPublish) return;
+    if (isPublished && !needsPublish) return;
     setPublishing(true);
     const result = await publishAction(guestbookId);
     if (result.error) {
@@ -112,6 +102,10 @@ export function PreviewEditor({
     } else {
       toast.success("Published!");
       setNeedsPublish(false);
+      if (!isPublished) {
+        // First publish — refresh to get the new slug into context
+        router.refresh();
+      }
     }
     setPublishing(false);
   }
@@ -202,59 +196,58 @@ export function PreviewEditor({
         ))}
       </div>
 
-      {/* Header bar — URL + Publish */}
-      <div ref={headerBarRef} className="mt-[16px] flex items-center justify-between">
-        {/* Widget header (commented out — widget tab disabled)
-        {tab === "widget" ? (
-          <div />
-        ) : ( */}
+      {/* Header bar — URL + Publish (sticky so it stays visible when scrolling) */}
+      <div className="mt-[16px] flex items-center justify-between sticky top-0 z-40 bg-bg-page py-[8px]">
           <div className="flex items-center gap-[24px] min-w-0">
             <div className="flex items-center gap-[8px] min-w-0">
               <GlobeIcon />
-              <span className="text-body font-medium text-text-primary truncate" title={currentUrl}>
+              <span
+                className={`text-body font-medium truncate ${isPublished ? "text-text-primary" : "text-text-placeholder"}`}
+                title={currentUrl}
+              >
                 {currentUrl.length > 40 ? currentUrl.slice(0, 40) + "..." : currentUrl}
               </span>
             </div>
             <div className="flex items-center gap-[12px] shrink-0">
               <button
-                onClick={() => toast.info("Edit slug coming soon")}
+                onClick={() => setShowPublishSettings(true)}
                 className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer"
-                title="Edit"
+                title="Publish settings"
               >
-                <EditIcon />
+                <SettingsIcon />
               </button>
               <button
                 onClick={copyUrl}
-                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer"
-                title="Copy URL"
+                disabled={!isPublished}
+                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                title={isPublished ? "Copy URL" : "Publish first to copy URL"}
               >
                 <CopyIcon />
               </button>
               <button
                 onClick={openExternal}
-                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer"
-                title="Open in new tab"
+                disabled={!isPublished}
+                className="flex h-[24px] w-[24px] items-center justify-center text-icon-inactive hover:text-icon-active transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                title={isPublished ? "Open in new tab" : "Publish first to open"}
               >
                 <ExternalLinkIcon />
               </button>
             </div>
           </div>
-        {/* )} */}
-        {/* Widget embed button (commented out — widget tab disabled)
-        {tab === "widget" ? (
-          <Button size="small" onClick={() => setShowEmbed(true)}>
-            Get Embed Code
-          </Button>
-        ) : ( */}
           <Button
             size="small"
             onClick={handlePublish}
-            disabled={publishing || !needsPublish}
+            disabled={publishing || (isPublished && !needsPublish)}
             className="shrink-0"
           >
-            {publishing ? "Publishing..." : needsPublish ? "Publish" : "Published"}
+            {publishing
+              ? "Publishing..."
+              : !isPublished
+                ? "Publish"
+                : needsPublish
+                  ? "Publish"
+                  : "Published"}
           </Button>
-        {/* )} */}
       </div>
 
       {/* Controls + Preview */}
@@ -404,6 +397,7 @@ export function PreviewEditor({
                     label="Website Link"
                     value={settings.website_link}
                     onChange={(v) => update("website_link", v)}
+                    placeholder="https://yourdomain.com"
                   />
                 </div>
               </>
@@ -542,26 +536,6 @@ export function PreviewEditor({
 
         {/* Right panel — preview (60%), sticky so it follows scroll */}
         <div className="w-full lg:w-[60%] self-start sticky top-[4px]">
-          {/* Sticky action button — only shows when original header scrolls out of view */}
-          {headerHidden && (
-            <div className="flex justify-end mb-[12px]">
-              {/* Widget embed button (commented out — widget tab disabled)
-              {tab === "widget" ? (
-                <Button size="small" onClick={() => setShowEmbed(true)}>
-                  Get Embed Code
-                </Button>
-              ) : ( */}
-                <Button
-                  size="small"
-                  onClick={handlePublish}
-                  disabled={publishing || !needsPublish}
-                  className="shrink-0"
-                >
-                  {publishing ? "Publishing..." : needsPublish ? "Publish" : "Published"}
-                </Button>
-              {/* )} */}
-            </div>
-          )}
           <div
             className="rounded-card border border-border bg-bg-card shadow-card p-[20px] relative overflow-hidden min-h-[480px]"
             style={{
@@ -590,6 +564,18 @@ export function PreviewEditor({
           settings={settings}
           entries={entries}
           fontFamily={fontFamily}
+        />
+      )}
+
+      {showPublishSettings && (
+        <PublishSettingsModal
+          guestbookId={guestbookId}
+          guestbookName={guestbook.name}
+          currentSlug={guestbook.slug ?? ""}
+          settings={settings}
+          customDomain={guestbook.customDomain}
+          domainVerified={guestbook.domainVerified}
+          onClose={() => setShowPublishSettings(false)}
         />
       )}
 
@@ -1480,12 +1466,10 @@ function GlobeIcon() {
   );
 }
 
-function EditIcon() {
+function SettingsIcon() {
   return (
     <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
-      <path d="M12.1831 1.3335C11.8569 1.3335 11.5338 1.39775 11.2324 1.5226C10.931 1.64744 10.6572 1.83043 10.4265 2.06111L9.55713 2.92966L13.0712 6.44366L13.9399 5.57411C14.1705 5.34348 14.3534 5.0697 14.4782 4.76839C14.6031 4.46699 14.6673 4.14395 14.6673 3.81772C14.6673 3.49149 14.6031 3.16845 14.4782 2.86705C14.3534 2.56565 14.1704 2.29179 13.9397 2.06111C13.709 1.83043 13.4352 1.64744 13.1338 1.5226C12.8324 1.39775 12.5093 1.3335 12.1831 1.3335Z" />
-      <path d="M1.52946 10.95L8.61389 3.87204L12.1288 7.38692L5.05097 14.4715C4.92592 14.5967 4.75626 14.667 4.57934 14.667H2.00065C1.63246 14.667 1.33398 14.3685 1.33398 14.0003V11.4216C1.33398 11.2447 1.40431 11.075 1.52946 10.95Z" />
-      <path d="M8.31641 13.3335C7.94822 13.3335 7.64974 13.632 7.64974 14.0002C7.64974 14.3684 7.94822 14.6668 8.31641 14.6668H14.0006C14.3688 14.6668 14.6673 14.3684 14.6673 14.0002C14.6673 13.632 14.3688 13.3335 14.0006 13.3335H8.31641Z" />
+      <path fillRule="evenodd" clipRule="evenodd" d="M7.12349 1.3335C6.70267 1.3335 6.33997 1.63146 6.25817 2.04436L5.95587 3.57053C5.62498 3.71624 5.31017 3.89355 5.01553 4.09879L3.55116 3.58504C3.15395 3.44575 2.71413 3.60714 2.50372 3.97166L1.62701 5.48916C1.41657 5.85376 1.49638 6.31437 1.81871 6.58743L3.01 7.59629C2.98107 7.86117 2.96591 8.12951 2.96591 8.40016C2.96591 8.67067 2.98104 8.93889 3.00994 9.20364L1.81906 10.2122C1.49667 10.4852 1.41678 10.9459 1.62723 11.3105L2.50393 12.828C2.71434 13.1926 3.15421 13.354 3.55146 13.2147L5.01512 12.7012C5.30994 12.9066 5.62495 13.084 5.95604 13.2298L6.25817 14.7558C6.33997 15.1687 6.70267 15.4668 7.12349 15.4668H8.87684C9.29766 15.4668 9.66036 15.1688 9.74216 14.7559L10.0443 13.2302C10.3756 13.0844 10.6907 12.9069 10.9856 12.7015L12.4499 13.2148C12.8471 13.3541 13.287 13.1927 13.4974 12.8281L14.3741 11.3106C14.5845 10.946 14.5047 10.4854 14.1824 10.2124L12.991 9.2037C13.0199 8.93894 13.035 8.6707 13.035 8.40016C13.035 8.12949 13.0199 7.86111 12.9909 7.59621L14.1821 6.58769C14.5045 6.31464 14.5843 5.854 14.3738 5.4894L13.4971 3.97189C13.2867 3.6073 12.8469 3.44589 12.4496 3.58518L10.9852 4.09903C10.6905 3.89368 10.3755 3.71629 10.0443 3.57052L9.74216 2.04428C9.66036 1.63142 9.29766 1.3335 8.87684 1.3335H7.12349ZM8.00016 10.4002C9.10473 10.4002 10.0002 9.50473 10.0002 8.40016C10.0002 7.29559 9.10473 6.40016 8.00016 6.40016C6.89559 6.40016 6.00016 7.29559 6.00016 8.40016C6.00016 9.50473 6.89559 10.4002 8.00016 10.4002Z" />
     </svg>
   );
 }

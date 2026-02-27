@@ -6,6 +6,11 @@ export type {
   SubscriptionStatus,
 } from "./guestbook";
 export { DEFAULT_SETTINGS, mergeSettings } from "./guestbook";
+export type {
+  DomainVercelStatus,
+  DomainVerificationData,
+  DnsRecord,
+} from "./domain";
 export type { DrawingData } from "./drawing";
 export {
   MAX_STROKE_DATA_SIZE,

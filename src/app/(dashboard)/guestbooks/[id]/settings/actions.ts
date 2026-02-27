@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   getGuestbook,
+  getGuestbookBySlug,
   updateGuestbookSettings,
   updateGuestbookName,
   updateGuestbookSlug,
@@ -33,6 +34,10 @@ const ALLOWED_SETTINGS_KEYS: Set<keyof GuestbookSettings> = new Set([
   "widget_title",
   "widget_description",
   "wall_layout",
+  "seo_title",
+  "seo_description",
+  "og_image_url",
+  "favicon_url",
 ]);
 
 function sanitizeSettings(
@@ -130,4 +135,17 @@ export async function updateSlugAction(guestbookId: string, slug: string) {
     }
     return { error: msg };
   }
+}
+
+export async function checkSlugAvailableAction(slug: string, currentGuestbookId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const existing = await getGuestbookBySlug(supabase, slug);
+  // Available if no one has it, or it belongs to the current guestbook
+  const available = !existing || existing.id === currentGuestbookId;
+  return { available };
 }

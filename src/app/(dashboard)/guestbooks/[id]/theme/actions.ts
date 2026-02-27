@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getGuestbook,
   updateGuestbookSettings,
+  updateGuestbookSlug,
 } from "@/lib/repositories/guestbook.repo";
+import { generateUniqueSlug } from "@/lib/utils/slug";
 import type { GuestbookSettings } from "@shared/types";
 
 export async function uploadLogoAction(
@@ -75,6 +77,76 @@ export async function saveThemeAction(
   }
 }
 
+export async function uploadOgImageAction(
+  guestbookId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const guestbook = await getGuestbook(supabase, guestbookId);
+  if (!guestbook || guestbook.user_id !== user.id) {
+    return { error: "Not found", url: null };
+  }
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided", url: null };
+
+  const ext = file.name.split(".").pop() ?? "png";
+  const path = `${user.id}/${guestbookId}/og-image.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("logos")
+    .upload(path, file, { upsert: true });
+
+  if (error) return { error: error.message, url: null };
+
+  const { data: urlData } = supabase.storage
+    .from("logos")
+    .getPublicUrl(path);
+
+  const url = `${urlData.publicUrl}?t=${Date.now()}`;
+  return { error: null, url };
+}
+
+export async function uploadFaviconAction(
+  guestbookId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const guestbook = await getGuestbook(supabase, guestbookId);
+  if (!guestbook || guestbook.user_id !== user.id) {
+    return { error: "Not found", url: null };
+  }
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided", url: null };
+
+  const ext = file.name.split(".").pop() ?? "png";
+  const path = `${user.id}/${guestbookId}/favicon.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("logos")
+    .upload(path, file, { upsert: true });
+
+  if (error) return { error: error.message, url: null };
+
+  const { data: urlData } = supabase.storage
+    .from("logos")
+    .getPublicUrl(path);
+
+  const url = `${urlData.publicUrl}?t=${Date.now()}`;
+  return { error: null, url };
+}
+
 export async function publishAction(guestbookId: string) {
   const supabase = await createClient();
   const {
@@ -84,13 +156,24 @@ export async function publishAction(guestbookId: string) {
 
   const guestbook = await getGuestbook(supabase, guestbookId);
   if (!guestbook || guestbook.user_id !== user.id) {
-    return { error: "Not found" };
+    return { error: "Not found", slug: null };
   }
 
-  if (guestbook.slug) {
-    revalidatePath(`/wall/${guestbook.slug}`);
-    revalidatePath(`/collect/${guestbook.slug}`);
-  }
+  try {
+    let slug = guestbook.slug;
 
-  return { error: null };
+    if (!slug) {
+      // First publish — generate and persist a slug
+      slug = await generateUniqueSlug(supabase, guestbook.name);
+      await updateGuestbookSlug(supabase, guestbookId, slug);
+    }
+
+    revalidatePath(`/wall/${slug}`);
+    revalidatePath(`/collect/${slug}`);
+
+    return { error: null, slug };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to publish";
+    return { error: message, slug: null };
+  }
 }

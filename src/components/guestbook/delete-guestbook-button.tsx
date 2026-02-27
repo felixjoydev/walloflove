@@ -25,8 +25,7 @@ export function DeleteGuestbookButton({
     }
 
     toast.success("Guestbook deleted.");
-    router.push("/guestbooks");
-    router.refresh();
+    window.location.href = result.redirectTo ?? "/guestbooks";
   }
 
   if (!confirming) {

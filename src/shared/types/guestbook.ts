@@ -28,6 +28,10 @@ export interface GuestbookSettings {
   card_border_color?: string;
   widget_transparent_bg?: boolean;
   wall_style?: "notebook" | "sticky";
+  seo_title?: string;
+  seo_description?: string;
+  og_image_url?: string | null;
+  favicon_url?: string | null;
 }
 
 export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
@@ -47,7 +51,7 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   logo_url: null,
   brand_color: "#6366f1",
   wall_title: "Wall of Love",
-  wall_description: "See what people are saying",
+  wall_description: "See what people are scribbling about us",
   collection_title: "Sign our Guestbook",
   collection_description: "Leave your mark with a scribble",
   widget_title: "Guestbook",
@@ -56,10 +60,14 @@ export const DEFAULT_SETTINGS: Required<GuestbookSettings> = {
   website_text: "Visit our website",
   website_link: "",
   button_text_color: "#ffffff",
-  button_border_radius: 9999,
+  button_border_radius: 12,
   card_border_color: "#EAEAEA",
   widget_transparent_bg: true,
   wall_style: "notebook",
+  seo_title: "",
+  seo_description: "",
+  og_image_url: null,
+  favicon_url: null,
 } as const;
 
 export function mergeSettings(

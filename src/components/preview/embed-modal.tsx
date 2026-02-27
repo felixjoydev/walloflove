@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { GuestbookSettings } from "@shared/types";
 import { Button } from "@/components/ui/button";
+import { ModalPunchHoles, getModalPunchHoleMask } from "@/components/ui/modal-punch-holes";
 import { getDotColor } from "@/lib/utils/color";
 
 interface Entry {
@@ -186,14 +187,19 @@ export function EmbedModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-bg-page/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[640px] rounded-card bg-bg-card shadow-card max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-[640px] rounded-card shadow-card"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Tab bar */}
+        <div
+          className="rounded-card bg-bg-card shadow-card border border-border max-h-[90vh] overflow-y-auto"
+          style={getModalPunchHoleMask(12)}
+        >
+          <div className="h-[48px]" />
+          {/* Tab bar */}
         <div className="flex gap-[4px] mx-[24px] border-b border-border">
           {(["grid", "carousel"] as const).map((t) => (
             <button
@@ -268,7 +274,9 @@ export function EmbedModal({
           <p className="mt-[12px] text-center text-body-sm text-text-secondary">
             Paste this snippet into your website&apos;s HTML where you want the widget to appear.
           </p>
+          </div>
         </div>
+        <ModalPunchHoles count={12} />
       </div>
     </div>
   );

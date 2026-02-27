@@ -5,6 +5,7 @@ import { SignatureSvg } from "@/components/wall/signature-svg";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ActionButton } from "@/components/ui/action-button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ModalPunchHoles, getModalPunchHoleMask } from "@/components/ui/modal-punch-holes";
 
 interface Entry {
   id: string;
@@ -153,14 +154,19 @@ export function InboxGrid({
       {/* Entry detail modal */}
       {modalEntry && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-bg-page/70 backdrop-blur-sm"
           onClick={() => setModalEntry(null)}
         >
           <div
-            className="w-full max-w-[480px] mx-[16px] rounded-card border border-border bg-bg-card shadow-card"
+            className="relative w-full max-w-[480px] mx-[16px] rounded-card shadow-card"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-[24px] flex flex-col">
+            <div
+              className="rounded-card border border-border bg-bg-card shadow-card"
+              style={getModalPunchHoleMask()}
+            >
+              <div className="h-[48px]" />
+              <div className="px-[24px] pb-[24px] pt-[8px] flex flex-col">
               {/* Signature */}
               <SignatureSvg
                 strokeData={modalEntry.stroke_data}
@@ -238,16 +244,18 @@ export function InboxGrid({
               </div>
             </div>
 
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={() => setModalEntry(null)}
-              className="absolute top-[12px] right-[12px] w-[32px] h-[32px] flex items-center justify-center rounded-icon text-text-placeholder hover:text-text-primary transition-colors cursor-pointer"
-            >
-              <svg className="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="currentColor">
-                <path fillRule="evenodd" clipRule="evenodd" d="M3.52925 3.52876C3.7896 3.26841 4.21171 3.26841 4.47206 3.52876L8.00065 7.05735L11.5292 3.52876C11.7896 3.26841 12.2117 3.26841 12.4721 3.52876C12.7324 3.78911 12.7324 4.21122 12.4721 4.47157L8.94346 8.00016L12.4721 11.5288C12.7324 11.7891 12.7324 12.2112 12.4721 12.4716C12.2117 12.7319 11.7896 12.7319 11.5292 12.4716L8.00065 8.94297L4.47206 12.4716C4.21171 12.7319 3.7896 12.7319 3.52925 12.4716C3.2689 12.2112 3.2689 11.7891 3.52925 11.5288L7.05784 8.00016L3.52925 4.47157C3.2689 4.21122 3.2689 3.78911 3.52925 3.52876Z" />
-              </svg>
-            </button>
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setModalEntry(null)}
+                className="absolute top-[60px] right-[12px] w-[32px] h-[32px] flex items-center justify-center rounded-icon text-text-placeholder hover:text-text-primary transition-colors cursor-pointer"
+              >
+                <svg className="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M3.52925 3.52876C3.7896 3.26841 4.21171 3.26841 4.47206 3.52876L8.00065 7.05735L11.5292 3.52876C11.7896 3.26841 12.2117 3.26841 12.4721 3.52876C12.7324 3.78911 12.7324 4.21122 12.4721 4.47157L8.94346 8.00016L12.4721 11.5288C12.7324 11.7891 12.7324 12.2112 12.4721 12.4716C12.2117 12.7319 11.7896 12.7319 11.5292 12.4716L8.00065 8.94297L4.47206 12.4716C4.21171 12.7319 3.7896 12.7319 3.52925 12.4716C3.2689 12.2112 3.2689 11.7891 3.52925 11.5288L7.05784 8.00016L3.52925 4.47157C3.2689 4.21122 3.2689 3.78911 3.52925 3.52876Z" />
+                </svg>
+              </button>
+            </div>
+            <ModalPunchHoles />
           </div>
         </div>
       )}

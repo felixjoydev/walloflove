@@ -21,6 +21,7 @@ const noopLimiter = {
 
 let _entrySubmitLimiter: Ratelimit | typeof noopLimiter | null = null;
 let _apiReadLimiter: Ratelimit | typeof noopLimiter | null = null;
+let _domainOpLimiter: Ratelimit | typeof noopLimiter | null = null;
 
 // 3 entry submissions per hour per visitor per guestbook
 export function getEntrySubmitLimiter() {
@@ -54,4 +55,21 @@ export function getApiReadLimiter() {
     }
   }
   return _apiReadLimiter;
+}
+
+// 5 domain operations per hour per user
+export function getDomainOpLimiter() {
+  if (!_domainOpLimiter) {
+    if (!isRedisConfigured()) {
+      _domainOpLimiter = noopLimiter;
+    } else {
+      _domainOpLimiter = new Ratelimit({
+        redis: getRedis(),
+        limiter: Ratelimit.slidingWindow(5, "1 h"),
+        analytics: true,
+        prefix: "ratelimit:domain-op",
+      });
+    }
+  }
+  return _domainOpLimiter;
 }

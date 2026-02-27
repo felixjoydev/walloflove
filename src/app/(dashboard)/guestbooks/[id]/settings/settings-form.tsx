@@ -1,29 +1,51 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useGuestbookContext } from "@/components/providers/guestbook-provider";
 import type { GuestbookSettings } from "@shared/types";
 import { saveSettingsAction, renameGuestbookAction } from "./actions";
+import { getDomainStatusAction } from "./domain-actions";
 import { deleteGuestbookAction } from "@/components/guestbook/delete-guestbook-action";
 import { SettingsTextField, SettingsRadioField } from "@/components/ui/settings-field";
 import { Button } from "@/components/ui/button";
+import { BillingCard } from "@/components/billing/billing-card";
+import { ConnectDomainModal } from "@/components/domain/connect-domain-modal";
+import { DomainStatusCard } from "@/components/domain/domain-status-card";
+import type { DnsRecord } from "@shared/types";
 
 type SettingsTab = "general" | "domain" | "billing";
 
 export function SettingsForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const guestbook = useGuestbookContext();
 
-  const [tab, setTab] = useState<SettingsTab>("general");
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<SettingsTab>(
+    initialTab === "domain" || initialTab === "billing" ? initialTab : "general"
+  );
   const [name, setName] = useState(guestbook.name);
   const [settings, setSettings] = useState<Required<GuestbookSettings>>(guestbook.settings);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [domainDnsRecords, setDomainDnsRecords] = useState<DnsRecord[]>([]);
 
   const savedName = useRef(guestbook.name);
   const savedSettings = useRef(guestbook.settings);
+
+  // Load DNS records when domain tab is active and a domain is connected
+  useEffect(() => {
+    if (tab === "domain" && guestbook.customDomain) {
+      getDomainStatusAction(guestbook.id).then((result) => {
+        if (!result.error && result.dnsRecords) {
+          setDomainDnsRecords(result.dnsRecords);
+        }
+      });
+    }
+  }, [tab, guestbook.customDomain, guestbook.id]);
 
   const hasChanges =
     name !== savedName.current ||
@@ -71,8 +93,7 @@ export function SettingsForm() {
       return;
     }
     toast.success("Guestbook deleted");
-    router.push("/guestbooks");
-    router.refresh();
+    window.location.href = result.redirectTo ?? "/guestbooks";
   }
 
   const tabs: { label: string; value: SettingsTab }[] = [
@@ -145,48 +166,56 @@ export function SettingsForm() {
         )}
 
         {tab === "domain" && (
-          <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
-            <div className="px-[12px] pt-[10px] pb-[8px]">
-              <span className="text-body font-medium text-text-primary block">
-                Custom Domain
-              </span>
-              <span className="text-body-sm text-text-secondary block mt-[2px]">
-                Serve your wall of love from your own domain.
-              </span>
-            </div>
-            <div className="rounded-t-input rounded-b-input border-t border-border bg-bg-card px-[10px] py-[16px] flex flex-col gap-[12px]">
-              <div className="flex flex-col gap-[4px] px-[4px]">
-                <span className="text-body-sm text-text-secondary">Example:</span>
-                <span className="text-body-sm font-medium text-text-primary">love.yourdomain.com</span>
+          <>
+            {guestbook.customDomain ? (
+              <DomainStatusCard
+                guestbookId={guestbook.id}
+                domain={guestbook.customDomain}
+                verified={guestbook.domainVerified}
+                dnsRecords={domainDnsRecords}
+              />
+            ) : (
+              <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
+                <div className="px-[12px] pt-[10px] pb-[8px]">
+                  <span className="text-body font-medium text-text-primary block">
+                    Custom Domain
+                  </span>
+                  <span className="text-body-sm text-text-secondary block mt-[2px]">
+                    Serve your wall of love from your own domain.
+                  </span>
+                </div>
+                <div className="rounded-t-input rounded-b-input border-t border-border bg-bg-card px-[10px] py-[16px] flex flex-col gap-[12px]">
+                  <div className="flex flex-col gap-[4px] px-[4px]">
+                    <span className="text-body-sm text-text-secondary">Example:</span>
+                    <span className="text-body-sm font-medium text-text-primary">love.yourdomain.com</span>
+                  </div>
+                  <Button size="small" variant="primary" onClick={() => setShowDomainModal(true)}>
+                    Set up your custom domain
+                  </Button>
+                </div>
               </div>
-              <Button size="small" variant="primary">
-                Set up your custom domain
-              </Button>
-            </div>
-          </div>
+            )}
+
+            {showDomainModal && (
+              <ConnectDomainModal
+                guestbookId={guestbook.id}
+                onClose={() => setShowDomainModal(false)}
+                onConnected={() => {
+                  setShowDomainModal(false);
+                  router.refresh();
+                }}
+              />
+            )}
+          </>
         )}
 
+        {/* Plan selection UI removed for free launch period.
+            When ready to introduce paid plans, restore from git history
+            or reference src/lib/stripe/config.ts and billing-actions.tsx. */}
         {tab === "billing" && (
-          <div className="w-full rounded-input border border-border bg-bg-page shadow-card">
-            <div className="px-[12px] pt-[10px] pb-[8px]">
-              <span className="text-body font-medium text-text-primary block">
-                Plan & Billing
-              </span>
-              <span className="text-body-sm text-text-secondary block mt-[2px]">
-                Manage your subscription and plan details.
-              </span>
-            </div>
-            <div className="rounded-t-input rounded-b-input border-t border-border bg-bg-card px-[10px] py-[16px] flex flex-col gap-[12px]">
-              <div className="flex items-center justify-between px-[4px]">
-                <div>
-                  <span className="text-body font-medium text-text-primary block">Free Plan</span>
-                  <span className="text-body-sm text-text-secondary block mt-[2px]">1 guestbook, unlimited entries</span>
-                </div>
-                <span className="text-body font-semibold text-text-primary">$0/mo</span>
-              </div>
-              <Button size="small" variant="secondary">
-                Upgrade plan
-              </Button>
+          <div className="flex justify-center">
+            <div className="w-full max-w-[620px]">
+              <BillingCard />
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getGuestbook } from "@/lib/repositories/guestbook.repo";
 import { GuestbookProvider } from "@/components/providers/guestbook-provider";
 import { mergeSettings } from "@shared/types";
-import type { GuestbookSettings } from "@shared/types";
+import type { GuestbookSettings, DomainVercelStatus, DomainVerificationData } from "@shared/types";
 
 export default async function GuestbookLayout({
   children,
@@ -31,6 +31,10 @@ export default async function GuestbookLayout({
         settings: mergeSettings(
           guestbook.settings as Partial<GuestbookSettings> | null
         ),
+        customDomain: guestbook.custom_domain,
+        domainVerified: guestbook.domain_verified,
+        domainVercelStatus: guestbook.domain_vercel_status as DomainVercelStatus,
+        domainVerificationData: guestbook.domain_verification_data as DomainVerificationData | null,
       }}
     >
       {children}

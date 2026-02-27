@@ -1,13 +1,17 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { GuestbookSettings } from "@shared/types";
+import type { GuestbookSettings, DomainVercelStatus, DomainVerificationData } from "@shared/types";
 
 interface GuestbookContextValue {
   id: string;
   name: string;
   slug: string | null;
   settings: Required<GuestbookSettings>;
+  customDomain: string | null;
+  domainVerified: boolean;
+  domainVercelStatus: DomainVercelStatus;
+  domainVerificationData: DomainVerificationData | null;
 }
 
 const GuestbookContext = createContext<GuestbookContextValue | null>(null);

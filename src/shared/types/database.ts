@@ -19,6 +19,10 @@ export interface Database {
           name: string;
           slug: string | null;
           settings: Json;
+          custom_domain: string | null;
+          domain_verified: boolean;
+          domain_vercel_status: string;
+          domain_verification_data: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -28,6 +32,10 @@ export interface Database {
           name: string;
           slug?: string | null;
           settings?: Json;
+          custom_domain?: string | null;
+          domain_verified?: boolean;
+          domain_vercel_status?: string;
+          domain_verification_data?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -37,6 +45,10 @@ export interface Database {
           name?: string;
           slug?: string | null;
           settings?: Json;
+          custom_domain?: string | null;
+          domain_verified?: boolean;
+          domain_vercel_status?: string;
+          domain_verification_data?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -190,7 +202,12 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_slug_by_domain: {
+        Args: { lookup_domain: string };
+        Returns: { slug: string; guestbook_id: string }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -8,7 +8,9 @@ import {
   bulkUpdateAction,
   deleteEntryAction,
 } from "@/app/(dashboard)/guestbooks/[id]/entries/actions";
+import { useGuestbookContext } from "@/components/providers/guestbook-provider";
 import { InboxGrid } from "./inbox-grid";
+import { InboxEmptyState } from "./inbox-empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Entry {
@@ -30,6 +32,7 @@ export function InboxView({
   guestbookId: string;
   entries: Entry[];
 }) {
+  const guestbook = useGuestbookContext();
   const [localEntries, setLocalEntries] = useState<Entry[]>(entries);
   const [filter, setFilter] = useState<FilterStatus>("pending");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -194,13 +197,7 @@ export function InboxView({
 
       {/* Content */}
       {filtered.length === 0 ? (
-        <div className="mt-16 text-center">
-          <p className="text-sm text-neutral-500">
-            {filter === "pending"
-              ? "No pending entries. Publish or share your wall to get testimonials."
-              : `No ${filter} entries.`}
-          </p>
-        </div>
+        <InboxEmptyState filter={filter} slug={guestbook.slug} guestbookId={guestbook.id} />
       ) : (
         <InboxGrid
           entries={filtered}
