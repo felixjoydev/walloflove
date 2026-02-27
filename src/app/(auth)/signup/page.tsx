@@ -21,7 +21,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -32,13 +32,19 @@ export default function SignupPage() {
       return;
     }
 
-    // If email confirmation is disabled, Supabase returns a session directly
-    if (data.session) {
-      router.push("/");
-    } else {
-      toast.success("Check your email to confirm your account.");
-      router.push("/login");
+    // Auto-login after signup (email confirmation is disabled)
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      toast.error(signInError.message);
+      setLoading(false);
+      return;
     }
+
+    router.push("/");
   }
 
   async function handleGoogleSignup() {
