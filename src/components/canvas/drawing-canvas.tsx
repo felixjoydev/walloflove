@@ -114,7 +114,7 @@ function reducer(state: CanvasState, action: Action): CanvasState {
       }
       return state;
     case "SET_SIZE":
-      return { ...state, activeSize: action.size };
+      return { ...state, activeSize: action.size, popoverOpen: false };
     case "CLOSE_POPOVER":
       if (!state.popoverOpen) return state;
       return { ...state, popoverOpen: false };
@@ -300,6 +300,11 @@ export function DrawingCanvas({
 
     activePointerRef.current = e.pointerId;
     canvasRef.current?.setPointerCapture(e.pointerId);
+
+    // Auto-raise pencil if no tool is raised yet (user started drawing directly)
+    if (!stateRef.current.toolRaised) {
+      dispatch({ type: "SET_TOOL", tool: "pencil" });
+    }
     dispatch({ type: "CLOSE_POPOVER" });
 
     const [x, y] = getCoords(e);
@@ -481,7 +486,7 @@ export function DrawingCanvas({
                             backgroundColor: color,
                             boxShadow:
                               activeColor === color
-                                ? `0 0 0 2px ${backgroundColor}, 0 0 0 4px ${color}`
+                                ? `0 0 0 2px #ffffff, 0 0 0 4px ${color}`
                                 : "none",
                             transform:
                               activeColor === color

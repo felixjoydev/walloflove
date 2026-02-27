@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { HexColorPicker } from "react-colorful";
+import { normalizeSvgFile } from "@/lib/utils/normalize-svg";
 
 /* ─── Base wrapper ─── */
 
@@ -234,9 +235,11 @@ export function SettingsUploadField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) onChange(file);
+    if (!file) return;
+    const normalized = await normalizeSvgFile(file);
+    onChange(normalized);
   }
 
   return (

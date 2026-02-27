@@ -49,3 +49,14 @@ export function getDotColor(bgHex: string): string {
   const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
   return `#${toHex(rr)}${toHex(gg)}${toHex(bb)}`;
 }
+
+/**
+ * Darken a hex color by a given amount (0-1).
+ */
+export function darkenColor(hex: string, amount: number): string {
+  const clean = hex.replace("#", "");
+  const r = Math.max(0, parseInt(clean.slice(0, 2), 16) - Math.round(255 * amount));
+  const g = Math.max(0, parseInt(clean.slice(2, 4), 16) - Math.round(255 * amount));
+  const b = Math.max(0, parseInt(clean.slice(4, 6), 16) - Math.round(255 * amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}

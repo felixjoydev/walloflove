@@ -13,41 +13,39 @@ export function WallNavbar({
 
   return (
     <div className="flex items-center justify-between px-[48px] py-[16px]">
-      {/* Logo + website link pill */}
-      {settings.website_link ? (
-        <a
-          href={settings.website_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-[8px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[8px] py-[6px] hover:opacity-80 transition-opacity"
-        >
-          <div className="h-[24px] w-[24px] shrink-0 overflow-hidden">
-            <img
-              src={logoUrl || "/logo.svg"}
-              alt="Logo"
-              className="h-[24px] w-[24px] object-contain"
-            />
-          </div>
-          <span className="text-[14px] font-medium text-text-primary whitespace-nowrap">
-            {settings.website_text || "Visit our website"}
-          </span>
-          <ExternalLink2Icon />
-        </a>
-      ) : (
-        <div className="flex items-center gap-[8px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[8px] py-[6px]">
-          <div className="h-[24px] w-[24px] shrink-0 overflow-hidden">
-            <img
-              src={logoUrl || "/logo.svg"}
-              alt="Logo"
-              className="h-[24px] w-[24px] object-contain"
-            />
-          </div>
-          <span className="text-[14px] font-medium text-text-primary whitespace-nowrap">
-            {settings.website_text || "Visit our website"}
-          </span>
-          <ExternalLink2Icon />
+      {/* Logo + website link */}
+      <div className="flex items-center gap-[12px]">
+        {/* Standalone logo */}
+        <div className="shrink-0">
+          <img
+            src={logoUrl || "/logo.svg"}
+            alt="Logo"
+            className="object-contain"
+            style={{ height: "40px", maxWidth: "120px", width: "auto" }}
+          />
         </div>
-      )}
+
+        {/* Website link pill */}
+        {settings.website_link ? (
+          <a
+            href={settings.website_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-[6px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[10px] py-[6px] hover:opacity-80 transition-opacity"
+          >
+            <span className="text-[14px] font-medium text-text-primary whitespace-nowrap">
+              {settings.website_text || "Visit our website"}
+            </span>
+            <ExternalLink2Icon />
+          </a>
+        ) : (
+          <div className="flex items-center gap-[6px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[10px] py-[6px]">
+            <span className="text-[14px] font-medium text-text-primary whitespace-nowrap">
+              {settings.website_text || "Visit our website"}
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Grid / Canvas switcher */}
       <div className="flex gap-[2px] rounded-icon border border-border bg-bg-card shadow-card-sm p-[2px] shrink-0">

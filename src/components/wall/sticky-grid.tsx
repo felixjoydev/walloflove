@@ -1,5 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import type { GuestbookSettings } from "@shared/types";
 import { SignatureSvg } from "./signature-svg";
+import { ExpandedCardOverlay } from "./expanded-card-overlay";
+import { darkenColor } from "@/lib/utils/color";
 
 interface Entry {
   id: string;
@@ -8,24 +13,6 @@ interface Entry {
   link: string | null;
   stroke_data: unknown;
   created_at: string;
-}
-
-/** Darken a hex color by a given amount (0–1) */
-function darkenColor(hex: string, amount: number): string {
-  const clean = hex.replace("#", "");
-  const r = Math.max(
-    0,
-    parseInt(clean.slice(0, 2), 16) - Math.round(255 * amount)
-  );
-  const g = Math.max(
-    0,
-    parseInt(clean.slice(2, 4), 16) - Math.round(255 * amount)
-  );
-  const b = Math.max(
-    0,
-    parseInt(clean.slice(4, 6), 16) - Math.round(255 * amount)
-  );
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
 /* Sticky note yellow — all fold values derive from this */
@@ -41,6 +28,7 @@ export function StickyGrid({
   hasMore,
   loadingMore,
   onLoadMore,
+  onSign,
 }: {
   settings: Required<GuestbookSettings>;
   entries: Entry[];
@@ -48,18 +36,68 @@ export function StickyGrid({
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
+  onSign?: () => void;
 }) {
+  const [expandedEntry, setExpandedEntry] = useState<Entry | null>(null);
+
   if (entries.length === 0) {
     return (
-      <div className="mx-auto max-w-[780px] px-[16px] pt-[72px] pb-[120px]">
-        <div className="text-center py-[64px]">
-          <p
-            className="text-[14px]"
-            style={{ color: settings.text_color, opacity: 0.5 }}
-          >
-            No entries yet. Be the first to sign!
-          </p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-[16px]">
+        {/* Empty sticky note */}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            width: "220px",
+            height: "220px",
+            backgroundColor: NOTE_COLOR,
+            borderRadius: `${BORDER_RADIUS}px ${BORDER_RADIUS}px 64px ${BORDER_RADIUS}px`,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div
+            className="absolute bottom-0 right-0 pointer-events-none"
+            style={{
+              width: "44px",
+              height: "44px",
+              borderTopLeftRadius: "20px",
+              border: "1px solid transparent",
+              backgroundImage: `linear-gradient(132deg, ${darkenColor(NOTE_COLOR, 0.05)} 79.5%, ${darkenColor(NOTE_COLOR, 0.18)} 85.97%), linear-gradient(135deg, ${darkenColor(NOTE_COLOR, 0.10)}00 0%, ${darkenColor(NOTE_COLOR, 0.10)} 100%)`,
+              backgroundOrigin: "padding-box, border-box",
+              backgroundClip: "padding-box, border-box",
+              boxShadow: "-1px -1px 2px rgba(0,0,0,0.03), -1px -1px 2px rgba(0,0,0,0.02), 2px 3px 4px rgba(0,0,0,0.06)",
+            }}
+          />
         </div>
+
+        {/* Creative copy */}
+        <h2
+          className="text-[24px] font-bold mt-[32px] text-center"
+          style={{ color: settings.text_color, fontFamily }}
+        >
+          Be the first to leave your mark
+        </h2>
+        <p
+          className="text-[16px] mt-[8px] text-center max-w-[360px]"
+          style={{ color: settings.text_color, opacity: 0.5, fontFamily }}
+        >
+          Pick up a pen, draw something, sign your name. This wall is waiting for you.
+        </p>
+
+        {/* Inline CTA */}
+        {onSign && (
+          <button
+            onClick={onSign}
+            className="mt-[24px] inline-flex items-center justify-center px-[24px] py-[12px] font-semibold text-[14px] shadow-card cursor-pointer hover:opacity-90 transition-opacity"
+            style={{
+              backgroundColor: settings.brand_color,
+              color: settings.button_text_color,
+              borderRadius: `${settings.button_border_radius}px`,
+              fontFamily,
+            }}
+          >
+            {settings.cta_text || "Sign the Guestbook"}
+          </button>
+        )}
       </div>
     );
   }
@@ -69,7 +107,7 @@ export function StickyGrid({
       {/* Title */}
       <div className="pt-[72px]">
         <h1
-          className="text-[24px] font-bold"
+          className="text-[32px] font-bold text-center"
           style={{ color: settings.text_color, fontFamily }}
         >
           {settings.wall_title}
@@ -78,7 +116,7 @@ export function StickyGrid({
       {/* Description */}
       {settings.wall_description && (
         <p
-          className="text-[14px] mt-[4px]"
+          className="text-[16px] mt-[4px] text-center"
           style={{ color: settings.text_color, opacity: 0.7, fontFamily }}
         >
           {settings.wall_description}
@@ -86,16 +124,28 @@ export function StickyGrid({
       )}
 
       {/* Sticky note grid */}
-      <div className="mt-[24px] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-[24px]">
+      <div className="mt-[40px] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-[24px]">
         {entries.map((entry) => (
           <StickyNoteCard
             key={entry.id}
             entry={entry}
             settings={settings}
             fontFamily={fontFamily}
+            onClick={() => setExpandedEntry(entry)}
           />
         ))}
       </div>
+
+      {/* Expanded overlay */}
+      {expandedEntry && (
+        <ExpandedCardOverlay
+          entry={expandedEntry}
+          cardType="sticky"
+          settings={settings}
+          fontFamily={fontFamily}
+          onClose={() => setExpandedEntry(null)}
+        />
+      )}
 
       {/* Load more */}
       {hasMore && (
@@ -120,10 +170,12 @@ function StickyNoteCard({
   entry,
   settings,
   fontFamily,
+  onClick,
 }: {
   entry: Entry;
   settings: Required<GuestbookSettings>;
   fontFamily: string;
+  onClick: () => void;
 }) {
   // Read per-entry note color (stored in stroke_data), fallback to default yellow
   const strokeObj = entry.stroke_data as Record<string, unknown> | null;
@@ -138,7 +190,7 @@ function StickyNoteCard({
 
   return (
     <div
-      className="relative flex flex-col h-full overflow-hidden"
+      className="relative flex flex-col h-full overflow-hidden transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] cursor-pointer"
       style={{
         backgroundColor: cardColor,
         borderRadius: `${BORDER_RADIUS}px ${BORDER_RADIUS}px 64px ${BORDER_RADIUS}px`,
@@ -146,6 +198,10 @@ function StickyNoteCard({
         paddingBottom: "24px",
         minHeight: "210px",
         boxShadow: "var(--shadow-card)",
+      }}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("a")) return;
+        onClick();
       }}
     >
       {/* Doodle / Scribble */}

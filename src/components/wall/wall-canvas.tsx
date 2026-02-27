@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { GuestbookSettings } from "@shared/types";
 import { SignatureSvg } from "./signature-svg";
+import { ExpandedCardOverlay } from "./expanded-card-overlay";
 import { getDotColor } from "@/lib/utils/color";
 
 interface Entry {
@@ -37,11 +38,13 @@ export function WallCanvas({
   entries,
   fontFamily,
   loading,
+  cardType = "notebook",
 }: {
   settings: Required<GuestbookSettings>;
   entries: Entry[];
   fontFamily: string;
   loading: boolean;
+  cardType?: "sticky" | "notebook";
 }) {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -294,79 +297,15 @@ export function WallCanvas({
 
       </div>
 
-      {/* Detail modal */}
+      {/* Expanded card overlay */}
       {selectedEntry && (
-        <div
-          data-no-pan
-          className="fixed inset-0 z-40 flex items-center justify-center"
-          onClick={() => setSelectedEntryId(null)}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/30" />
-          {/* Card */}
-          <div
-            className="relative w-[320px] rounded-card border shadow-card p-[16px]"
-            style={{ backgroundColor: settings.card_background_color, borderColor: settings.card_border_color }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Signature */}
-            <SignatureSvg
-              strokeData={selectedEntry.stroke_data}
-              className="w-full h-[120px] [&>svg]:w-full [&>svg]:h-full"
-              style={{
-                backgroundColor: settings.canvas_background_color,
-                borderRadius: "8px",
-              }}
-            />
-            {/* Message */}
-            {selectedEntry.message && (
-              <p
-                className="text-[14px] mt-[12px]"
-                style={{
-                  color: settings.card_text_color,
-                  opacity: 0.7,
-                  fontFamily,
-                }}
-              >
-                {selectedEntry.message}
-              </p>
-            )}
-            {/* Name + date + link icon */}
-            <div className="flex items-end justify-between mt-auto pt-[12px]">
-              <div className="flex flex-col gap-[2px]">
-                <span className="flex items-center gap-[6px]">
-                  <span
-                    className="text-[14px] font-medium"
-                    style={{ color: settings.card_text_color, fontFamily }}
-                  >
-                    {selectedEntry.name}
-                  </span>
-                  {selectedEntry.link && (
-                    <a
-                      href={selectedEntry.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 hover:opacity-70 transition-opacity"
-                      title={selectedEntry.link}
-                    >
-                      <img src="/exterlanal-link-2.svg" alt="Link" className="w-[14px] h-[14px]" style={{ opacity: 0.5 }} />
-                    </a>
-                  )}
-                </span>
-                <span
-                  className="text-[11px]"
-                  style={{ color: settings.card_text_color, opacity: 0.5 }}
-                >
-                  {new Date(selectedEntry.created_at).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ExpandedCardOverlay
+          entry={selectedEntry}
+          cardType={cardType}
+          settings={settings}
+          fontFamily={fontFamily}
+          onClose={() => setSelectedEntryId(null)}
+        />
       )}
 
       {/* Loading indicator */}

@@ -45,6 +45,17 @@ interface Entry {
   created_at: string;
 }
 
+interface PreviewEntry extends Entry {
+  signatureImg: string;
+}
+
+const PREVIEW_ENTRIES: PreviewEntry[] = [
+  { id: "s1", name: "Ronald", message: "You guys are awesome", link: null, stroke_data: null, created_at: "2026-02-16T00:00:00Z", signatureImg: "/signature-1.svg" },
+  { id: "s2", name: "Sarah", message: "Love this product!", link: null, stroke_data: { note_color: "#D4C6FF" }, created_at: "2026-02-15T00:00:00Z", signatureImg: "/signature-2.svg" },
+  { id: "s3", name: "Alex", message: "Super cool", link: null, stroke_data: { note_color: "#C6F0FF" }, created_at: "2026-02-14T00:00:00Z", signatureImg: "/signature-3.svg" },
+  { id: "s4", name: "Jordan", message: "Really impressive", link: null, stroke_data: null, created_at: "2026-02-13T00:00:00Z", signatureImg: "/signature-4.svg" },
+];
+
 export function PreviewEditor({
   guestbookId,
   entries,
@@ -316,11 +327,11 @@ export function PreviewEditor({
                       />
                     ))}
                   </div>
-                  {/* Mini lines to suggest content */}
-                  <div className="absolute left-[12px] right-[5px] top-[8px] flex flex-col gap-[3px]">
-                    <div className="h-[2px] rounded-full bg-[#E0E0E0] w-full" />
-                    <div className="h-[2px] rounded-full bg-[#E0E0E0] w-[70%]" />
-                    <div className="h-[2px] rounded-full bg-[#E0E0E0] w-[50%]" />
+                  {/* Mini signature */}
+                  <div className="absolute left-[10px] right-[4px] top-[6px] bottom-[6px] flex items-center justify-center">
+                    <svg className="w-full h-full" viewBox="0 0 42 63" fill="none">
+                      <path d="M1 31.3618C2.76123 28.6672 5.38716 20.4247 4.94959 8.6698C4.80134 4.68741 3.90876 2.17915 3.4144 1.65592C-1.72304 -3.78153 6.0098 25.5164 7.15353 55.1465C7.35921 60.4748 6.83547 61.6437 6.20364 61.9306C5.57181 62.2174 4.60156 61.5907 3.80265 60.5009C2.04412 58.1019 1.9624 54.5844 2.6827 50.9848C4.28251 42.9898 9.48864 39.4278 13.4417 36.9359C17.3352 34.4814 23.0119 35.1459 28.0535 34.1892C32.5082 33.3438 34.7166 27.955 38.3961 24.5107C39.2415 23.4891 39.8855 22.1986 40.2917 22.2232C40.6978 22.2478 40.8467 23.6266 41 25.0471" stroke="#E0E0E0" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
                   </div>
                 </div>
                 <span className="text-[11px] font-medium text-text-secondary">Notebook</span>
@@ -346,11 +357,11 @@ export function PreviewEditor({
                     boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
                   }}
                 >
-                  {/* Mini content lines */}
-                  <div className="absolute left-[6px] right-[6px] top-[8px] flex flex-col gap-[3px]">
-                    <div className="h-[2px] rounded-full w-full" style={{ backgroundColor: "#E6DBA0" }} />
-                    <div className="h-[2px] rounded-full w-[60%]" style={{ backgroundColor: "#E6DBA0" }} />
-                    <div className="h-[2px] rounded-full w-[40%]" style={{ backgroundColor: "#E6DBA0" }} />
+                  {/* Mini signature */}
+                  <div className="absolute left-[6px] right-[6px] top-[6px] bottom-[6px] flex items-center justify-center">
+                    <svg className="w-full h-full" viewBox="0 0 42 63" fill="none">
+                      <path d="M1 31.3618C2.76123 28.6672 5.38716 20.4247 4.94959 8.6698C4.80134 4.68741 3.90876 2.17915 3.4144 1.65592C-1.72304 -3.78153 6.0098 25.5164 7.15353 55.1465C7.35921 60.4748 6.83547 61.6437 6.20364 61.9306C5.57181 62.2174 4.60156 61.5907 3.80265 60.5009C2.04412 58.1019 1.9624 54.5844 2.6827 50.9848C4.28251 42.9898 9.48864 39.4278 13.4417 36.9359C17.3352 34.4814 23.0119 35.1459 28.0535 34.1892C32.5082 33.3438 34.7166 27.955 38.3961 24.5107C39.2415 23.4891 39.8855 22.1986 40.2917 22.2232C40.6978 22.2478 40.8467 23.6266 41 25.0471" stroke="#E6DBA0" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
                   </div>
                   {/* Mini fold */}
                   <div
@@ -675,14 +686,7 @@ function WallPreview({
     };
   }
 
-  const placeholders = [
-    { id: "s1", name: "Ronald", message: "You guys are awesome", link: null, stroke_data: null, created_at: "2026-02-16T00:00:00Z" },
-    { id: "s2", name: "Sarah", message: "Love this product!", link: null, stroke_data: null, created_at: "2026-02-15T00:00:00Z" },
-    { id: "s3", name: "Alex", message: "Super cool", link: null, stroke_data: null, created_at: "2026-02-14T00:00:00Z" },
-    { id: "s4", name: "Jordan", message: "Really impressive", link: null, stroke_data: null, created_at: "2026-02-13T00:00:00Z" },
-  ];
-  const real = entries.slice(0, 4);
-  const sampleEntries = real.length >= 4 ? real : [...real, ...placeholders.slice(real.length)];
+  const sampleEntries = PREVIEW_ENTRIES;
 
   /* ── Canvas view state ── */
   const CELL_W = 100;
@@ -786,18 +790,23 @@ function WallPreview({
     <>
       {/* Top bar: Logo + link | View switcher */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-[8px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[8px] py-[6px]" style={zoneStyle("link-card")}>
-          <div className="h-[24px] w-[24px] shrink-0 overflow-hidden" style={zoneStyle("logo")}>
+        <div className="flex items-center gap-[8px]" style={zoneStyle("link-card")}>
+          {/* Standalone logo */}
+          <div className="shrink-0" style={zoneStyle("logo")}>
             <img
               src={logoUrl || "/logo.svg"}
               alt="Logo"
-              className="h-[24px] w-[24px] object-contain"
+              className="object-contain"
+              style={{ height: "38px", maxWidth: "80px", width: "auto" }}
             />
           </div>
-          <span className="text-[14px] font-medium text-text-primary whitespace-nowrap" style={zoneStyle("website-text")}>
-            {settings.website_text || "Visit our website"}
-          </span>
-          <span style={zoneStyle("link-icon")}><ExternalLink2Icon /></span>
+          {/* Website link pill */}
+          <div className="flex items-center gap-[6px] rounded-icon border border-border bg-bg-card shadow-card-sm px-[8px] py-[6px]">
+            <span className="text-[14px] font-medium text-text-primary whitespace-nowrap" style={zoneStyle("website-text")}>
+              {settings.website_text || "Visit our website"}
+            </span>
+            <span style={zoneStyle("link-icon")}><ExternalLink2Icon /></span>
+          </div>
         </div>
         <div className="flex gap-[2px] rounded-icon border border-border bg-bg-card shadow-card-sm p-[2px] shrink-0" style={zoneStyle("grid-switcher")}>
           <button
@@ -822,7 +831,7 @@ function WallPreview({
       {viewMode === "grid" ? (
         <>
           {/* Title */}
-          <div className="mt-[16px]" style={zoneStyle("title")}>
+          <div className="mt-[16px] text-center" style={zoneStyle("title")}>
             <h2
               className="text-[18px] font-bold"
               style={{ color: settings.text_color, fontFamily }}
@@ -831,7 +840,7 @@ function WallPreview({
             </h2>
           </div>
           {/* Description */}
-          <div style={zoneStyle("description")}>
+          <div className="text-center" style={zoneStyle("description")}>
             <p
               className="text-[12px] mt-[4px]"
               style={{ color: settings.text_color, opacity: 0.7, fontFamily }}
@@ -887,7 +896,7 @@ function WallPreview({
                       ...cardInnerStyle("card-doodle"),
                     }}
                   >
-                    <SignatureSample color="#000000" />
+                    <img src={entry.signatureImg} alt="" className="h-[48px] w-auto object-contain" />
                   </div>
                   {/* Text — dims for card-text highlight */}
                   <div className="flex flex-col flex-1" style={cardInnerStyle("card-text-only")}>
@@ -970,7 +979,7 @@ function WallPreview({
                   }}
                 >
                   <div className="w-full h-full flex items-center justify-center">
-                    <SignatureSample color="#000000" />
+                    <img src={entry.signatureImg} alt="" className="h-[48px] w-auto object-contain" />
                   </div>
                 </div>
               ))}
@@ -1116,14 +1125,7 @@ function WidgetPreview({
     };
   }
 
-  const placeholders = [
-    { id: "s1", name: "Ronald", message: "You guys are awesome", link: null, stroke_data: null, created_at: "2026-02-16T00:00:00Z" },
-    { id: "s2", name: "Sarah", message: "Love this product!", link: null, stroke_data: null, created_at: "2026-02-15T00:00:00Z" },
-    { id: "s3", name: "Alex", message: "Super cool", link: null, stroke_data: null, created_at: "2026-02-14T00:00:00Z" },
-    { id: "s4", name: "Jordan", message: "Really impressive", link: null, stroke_data: null, created_at: "2026-02-13T00:00:00Z" },
-  ];
-  const real = entries.slice(0, 4);
-  const sampleEntries = real.length >= 4 ? real : [...real, ...placeholders.slice(real.length)];
+  const sampleEntries = PREVIEW_ENTRIES;
 
   return (
     <>
@@ -1199,7 +1201,7 @@ function WidgetPreview({
                     ...cardInnerStyle("card-doodle"),
                   }}
                 >
-                  <SignatureSample color="#000000" />
+                  <img src={entry.signatureImg} alt="" className="h-[48px] w-auto object-contain" />
                 </div>
                 {/* Text content */}
                 <div className="flex flex-col flex-1" style={cardInnerStyle("card-text-only")}>
@@ -1287,6 +1289,8 @@ function CollectionPreview({
   fontFamily: string;
   highlightZones: string[] | null;
 }) {
+  const [selectedStickyColor, setSelectedStickyColor] = useState(STICKY_NOTE_COLOR);
+
   function zoneStyle(zone: string): React.CSSProperties {
     if (!highlightZones) return { transition: "opacity 0.2s ease" };
     const dimOpacity = highlightZones.includes("bg") ? 0 : 0.3;
@@ -1320,7 +1324,8 @@ function CollectionPreview({
           <img
             src={settings.logo_url || "/logo.svg"}
             alt="Logo"
-            className="w-[56px] h-[42px] object-contain"
+            className="object-contain"
+            style={{ height: "42px", maxWidth: "120px", width: "auto" }}
           />
         </div>
         <h2
@@ -1349,14 +1354,15 @@ function CollectionPreview({
           {settings.wall_style === "sticky" && (
             <div className="flex items-center gap-[6px] justify-center" style={zoneStyle("canvas")}>
               {["#F5F5F5", "#FFD0C8", "#FFE5CB", "#FFF9C6", "#D1F6D7", "#CBE9FF", "#E5D7FF", "#FFCBE9"].map((color) => {
-                const isSelected = color === "#FFF9C6";
+                const isSelected = color === selectedStickyColor;
                 const fl = stickyDarken(color, 0.05);
                 const fd = stickyDarken(color, 0.18);
                 const fs = stickyDarken(color, 0.10);
                 return (
                   <div
                     key={color}
-                    className="relative shrink-0 overflow-hidden"
+                    className="relative shrink-0 overflow-hidden cursor-pointer"
+                    onClick={() => setSelectedStickyColor(color)}
                     style={{
                       width: "20px",
                       height: "20px",
@@ -1391,10 +1397,10 @@ function CollectionPreview({
               height={180}
               brandColor={settings.brand_color}
               {...(settings.wall_style === "sticky" ? {
-                backgroundColor: STICKY_NOTE_COLOR,
+                backgroundColor: selectedStickyColor,
                 showDotGrid: false,
                 showInsetShadow: false,
-                drawerColor: stickyDarken(STICKY_NOTE_COLOR, 0.05),
+                drawerColor: stickyDarken(selectedStickyColor, 0.05),
               } : {})}
             />
           </div>
@@ -1522,14 +1528,6 @@ function GridPreviewIcon() {
   );
 }
 
-function SignatureSample({ color }: { color: string }) {
-  return (
-    <svg className="h-[48px] w-[32px]" viewBox="0 0 42 63" fill="none">
-      <path d="M1 31.3618C2.76123 28.6672 5.38716 20.4247 4.94959 8.6698C4.80134 4.68741 3.90876 2.17915 3.4144 1.65592C-1.72304 -3.78153 6.0098 25.5164 7.15353 55.1465C7.35921 60.4748 6.83547 61.6437 6.20364 61.9306C5.57181 62.2174 4.60156 61.5907 3.80265 60.5009C2.04412 58.1019 1.9624 54.5844 2.6827 50.9848C4.28251 42.9898 9.48864 39.4278 13.4417 36.9359C17.3352 34.4814 23.0119 35.1459 28.0535 34.1892C32.5082 33.3438 34.7166 27.955 38.3961 24.5107C39.2415 23.4891 39.8855 22.1986 40.2917 22.2232C40.6978 22.2478 40.8467 23.6266 41 25.0471" stroke={color} strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function CanvasPreviewIcon() {
   return (
     <svg className="h-[16px] w-[16px]" viewBox="0 0 16 16" fill="currentColor">
@@ -1565,7 +1563,7 @@ function StickyPreviewCard({
   fontFamily,
   zoneStyle,
 }: {
-  entry: Entry;
+  entry: PreviewEntry;
   fontFamily: string;
   zoneStyle: (zone: string) => React.CSSProperties;
 }) {
@@ -1590,7 +1588,7 @@ function StickyPreviewCard({
     >
       {/* Doodle area */}
       <div className="w-full h-[40px] flex items-center justify-center">
-        <SignatureSample color={STICKY_TEXT} />
+        <img src={entry.signatureImg} alt="" className="h-[36px] w-auto object-contain" />
       </div>
 
       {/* Message */}

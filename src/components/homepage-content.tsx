@@ -19,6 +19,7 @@ import { InlineFlower } from "@/components/inline-flower";
 import { InlineNotebook } from "@/components/inline-notebook";
 import { InlineStickyNote } from "@/components/inline-sticky-note";
 import { SketchyStrike } from "@/components/sketchy-strike";
+import { HomepageDemo } from "@/components/homepage-demo";
 
 export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
   return (
@@ -29,9 +30,9 @@ export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
     >
       {/* Navigation */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-[720px] mx-auto w-full">
-        <Link href="/" className="flex items-center gap-2" tabIndex={copyId !== "a" ? -1 : undefined}>
-          <Image src="/logo.svg" alt="Guestbook" width={28} height={22} />
-          <span className="font-display font-semibold text-body text-text-primary">
+        <Link href="/" className="flex items-center gap-2.5" tabIndex={copyId !== "a" ? -1 : undefined}>
+          <Image src="/logo.svg" alt="Guestbook" width={40} height={30} />
+          <span className="font-display font-semibold text-[20px] text-text-primary">
             Guestbook
           </span>
         </Link>
@@ -52,7 +53,7 @@ export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-8 text-center">
+      <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-16 text-center">
         <h1 className="font-display font-bold text-[80px] leading-[0.95] tracking-tight text-text-primary">
           Make Internet
           <br />
@@ -62,102 +63,32 @@ export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
         <p className="mt-6 text-text-secondary text-[18px] leading-relaxed max-w-[420px] mx-auto">
           A place for your visitors to express their love
         </p>
-        <div className="mt-8 relative inline-block">
+        <div className="mt-8">
           <CreativeGuestbookButton />
-          {/* "Play around" annotation */}
-          <span className="absolute -right-32 top-0 text-text-secondary text-[14px] italic rotate-[-6deg]">
-            Play around
-            <svg
-              className="absolute -left-4 bottom-[-12px] rotate-[160deg]"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path d="M7 7C7 7 12 8 15 12C18 16 17 20 17 20" />
-              <path d="M14 18L17 21L20 18" />
-            </svg>
-          </span>
         </div>
       </section>
 
-      {/* Interactive Demo — Wall of Love frame on full-width gradient */}
-      <section
-        className="pt-4 pb-16"
-        style={{
-          background:
-            "linear-gradient(90deg, #FF5159 0%, #D048FF 20.22%, #6C73FF 40.44%, #407CFF 60.11%, #54FF9C 79.78%, #C1EA68 100%)",
-        }}
-      >
-        <div className="max-w-[900px] mx-auto px-6">
-          <div className="rounded-card shadow-card overflow-hidden border border-border bg-bg-card">
-            {/* Mock Wall of Love page */}
-            <div className="p-8">
-              {/* Wall header */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Image
-                    src="/logo.svg"
-                    alt="Logo"
-                    width={24}
-                    height={19}
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <button className="p-1.5 rounded-icon bg-bg-subtle" tabIndex={copyId !== "a" ? -1 : undefined}>
-                    <Image
-                      src="/grid.svg"
-                      alt="Grid"
-                      width={16}
-                      height={16}
-                    />
-                  </button>
-                  <button className="p-1.5 rounded-icon" tabIndex={copyId !== "a" ? -1 : undefined}>
-                    <Image
-                      src="/table-rows.svg"
-                      alt="List"
-                      width={16}
-                      height={16}
-                    />
-                  </button>
-                </div>
-              </div>
+      {/* "Play around" annotation with arrow pointing to demo */}
+      <div className="flex flex-col items-center -mb-4 ml-[200px]">
+        <span className={`text-text-secondary text-[16px] ${gochiHand.className} ml-[70px]`}>
+          Play around
+        </span>
+        <Image src="/arrow-home.svg" alt="" width={90} height={93} className="mt-1" />
+      </div>
 
-              {/* Wall title */}
-              <div className="text-center mb-8">
-                <h2 className="font-display font-bold text-[28px] text-text-primary">
-                  Wall of Love
-                </h2>
-                <p className="text-text-secondary text-body-sm mt-1">
-                  A place for your visitors to express their love
-                </p>
-              </div>
-
-              {/* Sticky notes grid */}
-              <div className="grid grid-cols-2 gap-4 max-w-[400px] mx-auto mb-8">
-                {[
-                  "bg-[#FFF9C4]",
-                  "bg-[#FFF9C4]",
-                  "bg-[#FFF9C4]",
-                  "bg-[#FFF9C4]",
-                ].map((color, i) => (
-                  <div
-                    key={i}
-                    className={`${color} rounded-sm aspect-square shadow-card-sm`}
-                  />
-                ))}
-              </div>
-
-              {/* Sign the Guestbook button */}
-              <div className="text-center">
-                <span className="inline-block rounded-input bg-text-primary px-6 py-3 text-body-sm font-medium text-white">
-                  Sign the Guestbook
-                </span>
-              </div>
-            </div>
-          </div>
+      {/* Interactive Demo — Wall of Love on full-width gradient */}
+      <section className="relative pt-20 pb-16 overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            opacity: 0.26,
+            background:
+              "linear-gradient(90deg, #FF5159 0%, #D048FF 20.22%, #6C73FF 40.44%, #407CFF 60.11%, #54FF9C 79.78%, #FFE23C 100%)",
+            filter: "blur(4px)",
+          }}
+        />
+        <div className="relative max-w-[1100px] mx-auto px-6">
+          <HomepageDemo />
         </div>
       </section>
 

@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import type { GuestbookSettings } from "@shared/types";
 import { SignatureSvg } from "./signature-svg";
+import { ExpandedCardOverlay } from "./expanded-card-overlay";
 import { getDotColor } from "@/lib/utils/color";
 
 interface Entry {
@@ -18,6 +22,7 @@ export function WallGrid({
   hasMore,
   loadingMore,
   onLoadMore,
+  onSign,
 }: {
   settings: Required<GuestbookSettings>;
   entries: Entry[];
@@ -25,18 +30,91 @@ export function WallGrid({
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
+  onSign?: () => void;
 }) {
+  const [expandedEntry, setExpandedEntry] = useState<Entry | null>(null);
+
   if (entries.length === 0) {
     return (
-      <div className="mx-auto max-w-[720px] px-[16px] pt-[72px] pb-[120px]">
-        <div className="text-center py-[64px]">
-          <p
-            className="text-[14px]"
-            style={{ color: settings.text_color, opacity: 0.5 }}
-          >
-            No entries yet. Be the first to sign!
-          </p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-[16px]">
+        {/* Empty notebook card */}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            width: "220px",
+            height: "220px",
+            borderRadius: `${settings.card_border_radius}px`,
+            paddingTop: "16px",
+            paddingRight: "16px",
+            paddingBottom: "16px",
+            paddingLeft: "40px",
+          }}
+        >
+          {/* Card background */}
+          <div
+            className="absolute inset-0 border"
+            style={{
+              backgroundColor: settings.card_background_color,
+              borderColor: settings.card_border_color,
+              borderRadius: `${settings.card_border_radius}px`,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
+            }}
+          />
+          {/* Punch holes */}
+          <div className="absolute left-[12px] top-0 bottom-0 flex flex-col items-center justify-evenly pointer-events-none z-10">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="w-[16px] h-[16px] rounded-full"
+                style={{
+                  backgroundColor: settings.background_color,
+                  boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.15) inset",
+                }}
+              />
+            ))}
+          </div>
+          {/* Signature canvas area */}
+          <div
+            className="relative w-full"
+            style={{
+              height: "120px",
+              backgroundColor: settings.canvas_background_color,
+              backgroundImage: `radial-gradient(circle, ${getDotColor(settings.background_color)} 1px, transparent 1px)`,
+              backgroundSize: "20px 20px",
+              borderRadius: "8px",
+            }}
+          />
         </div>
+
+        {/* Creative copy */}
+        <h2
+          className="text-[24px] font-bold mt-[32px] text-center"
+          style={{ color: settings.text_color, fontFamily }}
+        >
+          Be the first to leave your mark
+        </h2>
+        <p
+          className="text-[16px] mt-[8px] text-center max-w-[360px]"
+          style={{ color: settings.text_color, opacity: 0.5, fontFamily }}
+        >
+          Pick up a pen, draw something, sign your name. This wall is waiting for you.
+        </p>
+
+        {/* Inline CTA */}
+        {onSign && (
+          <button
+            onClick={onSign}
+            className="mt-[24px] inline-flex items-center justify-center px-[24px] py-[12px] font-semibold text-[14px] shadow-card cursor-pointer hover:opacity-90 transition-opacity"
+            style={{
+              backgroundColor: settings.brand_color,
+              color: settings.button_text_color,
+              borderRadius: `${settings.button_border_radius}px`,
+              fontFamily,
+            }}
+          >
+            {settings.cta_text || "Sign the Guestbook"}
+          </button>
+        )}
       </div>
     );
   }
@@ -46,7 +124,7 @@ export function WallGrid({
       {/* Title — extra top padding for fixed navbar */}
       <div className="pt-[72px]">
         <h1
-          className="text-[24px] font-bold"
+          className="text-[32px] font-bold text-center"
           style={{ color: settings.text_color, fontFamily }}
         >
           {settings.wall_title}
@@ -55,7 +133,7 @@ export function WallGrid({
       {/* Description */}
       {settings.wall_description && (
         <p
-          className="text-[14px] mt-[4px]"
+          className="text-[16px] mt-[4px] text-center"
           style={{ color: settings.text_color, opacity: 0.7, fontFamily }}
         >
           {settings.wall_description}
@@ -63,17 +141,21 @@ export function WallGrid({
       )}
 
       {/* Signature cards */}
-      <div className="mt-[24px] grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+      <div className="mt-[40px] grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
         {entries.map((entry) => (
           <div
             key={entry.id}
-            className="flex flex-col relative overflow-hidden"
+            className="flex flex-col relative overflow-hidden transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] cursor-pointer"
             style={{
               borderRadius: `${settings.card_border_radius}px`,
               paddingTop: "16px",
               paddingRight: "16px",
               paddingBottom: "16px",
               paddingLeft: "40px",
+            }}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("a")) return;
+              setExpandedEntry(entry);
             }}
           >
             {/* Card background */}
@@ -122,6 +204,10 @@ export function WallGrid({
                     color: settings.card_text_color,
                     opacity: 0.7,
                     fontFamily,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: "vertical" as const,
+                    overflow: "hidden",
                   }}
                 >
                   {entry.message}
@@ -165,6 +251,17 @@ export function WallGrid({
           </div>
         ))}
       </div>
+
+      {/* Expanded overlay */}
+      {expandedEntry && (
+        <ExpandedCardOverlay
+          entry={expandedEntry}
+          cardType="notebook"
+          settings={settings}
+          fontFamily={fontFamily}
+          onClose={() => setExpandedEntry(null)}
+        />
+      )}
 
       {/* Load more */}
       {hasMore && (

@@ -7,6 +7,7 @@ import type { DrawingData } from "@shared/types/drawing";
 import { DrawingCanvas } from "@/components/canvas/drawing-canvas";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { darkenColor } from "@/lib/utils/color";
 
 interface CollectionGuestbook {
   id: string;
@@ -25,14 +26,6 @@ const STICKY_COLORS = [
   "#E5D7FF",
   "#FFCBE9",
 ] as const;
-
-function darkenColor(hex: string, amount: number): string {
-  const clean = hex.replace("#", "");
-  const r = Math.max(0, parseInt(clean.slice(0, 2), 16) - Math.round(255 * amount));
-  const g = Math.max(0, parseInt(clean.slice(2, 4), 16) - Math.round(255 * amount));
-  const b = Math.max(0, parseInt(clean.slice(4, 6), 16) - Math.round(255 * amount));
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-}
 
 export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }) {
   const { settings } = guestbook;
@@ -91,7 +84,11 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
       }
 
       setSubmitted(true);
-      toast.success("Thank you for signing!");
+      toast.success(
+        settings.moderation_mode === "manual_approve"
+          ? "Submitted! Awaiting approval."
+          : "Your signature is live!"
+      );
 
       // Track submission
       fetch("/api/v1/analytics", {
@@ -118,7 +115,9 @@ export function CollectionForm({ guestbook }: { guestbook: CollectionGuestbook }
             Thank you!
           </h1>
           <p className="mt-2 text-body font-medium text-text-secondary">
-            Your signature has been submitted.
+            {settings.moderation_mode === "manual_approve"
+              ? "Your scribble has been received! It\u2019ll appear on the wall once the owner gives it a thumbs up."
+              : "Your signature is live on the wall!"}
           </p>
         </div>
       </div>
