@@ -12,7 +12,7 @@ export function WallNavbar({
   const logoUrl = settings.logo_url ?? undefined;
 
   return (
-    <div className="flex items-center justify-between px-[48px] py-[16px]">
+    <div className="flex items-center justify-between px-[16px] py-[16px] lg:px-[48px]">
       {/* Logo + website link */}
       <div className="flex items-center gap-[12px]">
         {/* Standalone logo */}
