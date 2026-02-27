@@ -225,7 +225,7 @@ export function HomepageDemo() {
                   borderRadius: `${settings.button_border_radius}px`,
                 }}
               >
-                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite]" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)" }} />
+                <span className="absolute inset-0 animate-[shimmer_3s_linear_infinite]" style={{ background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.2) 55%, transparent 80%)" }} />
                 {settings.cta_text}
               </button>
             </div>
@@ -249,7 +249,7 @@ export function HomepageDemo() {
                   borderRadius: `${settings.button_border_radius}px`,
                 }}
               >
-                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite]" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)" }} />
+                <span className="absolute inset-0 animate-[shimmer_3s_linear_infinite]" style={{ background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.2) 55%, transparent 80%)" }} />
                 {settings.cta_text}
               </button>
             </div>
