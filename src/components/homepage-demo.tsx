@@ -218,13 +218,14 @@ export function HomepageDemo() {
             <div className="sticky bottom-0 z-10 flex justify-center pb-[24px] pt-[12px] pointer-events-none">
               <button
                 onClick={() => setShowCollect(true)}
-                className="pointer-events-auto inline-flex items-center justify-center px-[24px] py-[12px] font-semibold text-[14px] shadow-card cursor-pointer hover:opacity-90 transition-opacity"
+                className="pointer-events-auto relative inline-flex items-center justify-center overflow-hidden px-[24px] py-[12px] font-semibold text-[14px] shadow-card cursor-pointer hover:opacity-90 transition-opacity"
                 style={{
                   backgroundColor: settings.brand_color,
                   color: settings.button_text_color,
                   borderRadius: `${settings.button_border_radius}px`,
                 }}
               >
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite]" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)" }} />
                 {settings.cta_text}
               </button>
             </div>
@@ -241,13 +242,14 @@ export function HomepageDemo() {
             <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center pb-[24px] pt-[12px] pointer-events-none">
               <button
                 onClick={() => setShowCollect(true)}
-                className="pointer-events-auto inline-flex items-center justify-center px-[24px] py-[12px] font-semibold text-[14px] shadow-card cursor-pointer hover:opacity-90 transition-opacity"
+                className="pointer-events-auto relative inline-flex items-center justify-center overflow-hidden px-[24px] py-[12px] font-semibold text-[14px] shadow-card cursor-pointer hover:opacity-90 transition-opacity"
                 style={{
                   backgroundColor: settings.brand_color,
                   color: settings.button_text_color,
                   borderRadius: `${settings.button_border_radius}px`,
                 }}
               >
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite]" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)" }} />
                 {settings.cta_text}
               </button>
             </div>
