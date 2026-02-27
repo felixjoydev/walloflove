@@ -864,7 +864,7 @@ function DemoCollectModal({
       <div className="absolute inset-0 bg-black/40" />
 
       <div
-        className="relative w-full max-w-md"
+        className="relative w-full max-w-md max-h-[85vh] overflow-y-auto overscroll-y-contain rounded-card"
         onClick={(e) => e.stopPropagation()}
         style={{ fontFamily }}
       >

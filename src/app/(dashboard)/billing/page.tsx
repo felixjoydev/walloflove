@@ -18,7 +18,7 @@ const PLAN_DISPLAY: Record<
     features: [
       "1 guestbook",
       "50 entries",
-      "SignBoard branding",
+      "Guestbook branding",
       "Auto-approve only",
     ],
   },

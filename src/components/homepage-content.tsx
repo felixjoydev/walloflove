@@ -169,7 +169,7 @@ export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
 
           {/* Block 4: The product */}
           <div className="space-y-6">
-            <p>That&apos;s why we built <Image src="/logo.svg" alt="SignBoard" width={36} height={28} className="inline-block align-middle" /> SignBoard.</p>
+            <p>That&apos;s why we built <Image src="/logo.svg" alt="Guestbook" width={36} height={28} className="inline-block align-middle" /> Guestbook.</p>
             <p>
               Visitors pick up a <InlinePencil /> pen, <InlineFlower /> draw something silly, sign their name,
               leave a note. Each entry shows up as a unique <span className={gochiHand.className}>hand-drawn</span> card on a

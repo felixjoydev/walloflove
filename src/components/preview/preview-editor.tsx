@@ -75,7 +75,7 @@ export function PreviewEditor({
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.signboard.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://guestbook.cv";
   const isPublished = !!guestbook.slug;
   const previewSlug = guestbook.slug ?? (toSlug(guestbook.name) || "your-guestbook");
   const wallUrl = `${appUrl}/wall/${previewSlug}`;

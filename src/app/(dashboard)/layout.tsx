@@ -25,7 +25,7 @@ export default async function DashboardLayout({
     <div className="flex h-screen flex-col bg-bg-page">
       <TopNavbar guestbooks={guestbookList} userEmail={user.email ?? ""} />
       <IconSidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-[64px] lg:pb-0">
         <div className="mx-auto max-w-[720px] px-6 py-8 min-h-full flex flex-col">
           {children}
         </div>

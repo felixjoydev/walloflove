@@ -3,7 +3,8 @@ import { DrawingCanvas, createToolbar } from "./drawing/canvas";
 import { submitEntry } from "./api";
 
 const CANVAS_WIDTH = 400;
-const CANVAS_HEIGHT = 250;
+const CANVAS_HEIGHT_DESKTOP = 250;
+const CANVAS_HEIGHT_MOBILE = 300;
 
 export function openModal(
   shadowRoot: ShadowRoot,
@@ -43,7 +44,8 @@ export function openModal(
   canvasArea.style.backgroundColor = settings.canvas_background_color;
   modal.appendChild(canvasArea);
 
-  const canvas = new DrawingCanvas(canvasArea, CANVAS_WIDTH, CANVAS_HEIGHT, () => {
+  const canvasHeight = window.innerWidth < 768 ? CANVAS_HEIGHT_MOBILE : CANVAS_HEIGHT_DESKTOP;
+  const canvas = new DrawingCanvas(canvasArea, CANVAS_WIDTH, canvasHeight, () => {
     updateSubmitState();
   });
 

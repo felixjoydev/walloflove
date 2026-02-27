@@ -55,9 +55,9 @@ export function EmbedModal({
   const [copied, setCopied] = useState(false);
 
   const widgetUrl =
-    process.env.NEXT_PUBLIC_WIDGET_URL ?? "https://widget.signboard.app";
+    process.env.NEXT_PUBLIC_WIDGET_URL ?? "https://guestbook.cv";
   const apiUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://app.signboard.app";
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://guestbook.cv";
 
   const snippet = `<div data-sb-id="${guestbookId}" data-format="${activeTab}"></div>
 <link rel="preconnect" href="${apiUrl}" />

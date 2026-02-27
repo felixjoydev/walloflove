@@ -8,7 +8,7 @@ import styles from "./styles.css?inline";
 const MAX_RENDERED_ENTRIES = 100;
 const POLL_INTERVAL = 30_000;
 
-class SignBoardWidget {
+class GuestbookWidget {
   #host: HTMLElement;
   #shadow: ShadowRoot;
   #root: HTMLElement;
@@ -133,10 +133,10 @@ class SignBoardWidget {
     if (this.#config.branding) {
       const branding = document.createElement("a");
       branding.className = "sb-branding";
-      branding.href = "https://signboard.app";
+      branding.href = "https://guestbook.cv";
       branding.target = "_blank";
       branding.rel = "noopener noreferrer";
-      branding.textContent = "Powered by SignBoard";
+      branding.textContent = "Powered by Guestbook";
       this.#root.appendChild(branding);
     }
   }
@@ -359,7 +359,7 @@ function initWidgets() {
   hosts.forEach((host) => {
     const id = host.getAttribute("data-sb-id");
     if (id && !host.shadowRoot) {
-      new SignBoardWidget(host, id);
+      new GuestbookWidget(host, id);
     }
   });
 }
@@ -381,7 +381,7 @@ const mutationObserver = new MutationObserver((mutations) => {
         !node.shadowRoot
       ) {
         const id = node.getAttribute("data-sb-id");
-        if (id) new SignBoardWidget(node, id);
+        if (id) new GuestbookWidget(node, id);
       }
     }
   }

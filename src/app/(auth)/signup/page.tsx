@@ -24,6 +24,9 @@ export default function SignupPage() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
     if (error) {
@@ -54,7 +57,7 @@ export default function SignupPage() {
       <Card className="p-[32px] pt-0" style={getModalPunchHoleMask()}>
         <div className="h-[64px]" />
         <div className="flex flex-col items-center text-center">
-          <img src="/logo.svg" alt="Walloflove" className="h-[48px] w-[61px] object-contain" />
+          <img src="/logo.svg" alt="Guestbook" className="h-[48px] w-[61px] object-contain" />
           <h1 className="mt-[24px] text-heading font-bold text-text-primary">
             Create your account
           </h1>
