@@ -19,7 +19,7 @@ const DEMO_SETTINGS: Required<GuestbookSettings> = {
   wall_style: "sticky",
   moderation_mode: "auto_approve",
   wall_title: "Wall of Love",
-  wall_description: "A place for your visitors to express their love",
+  wall_description: "See what people are scribbling about us",
   collection_title: "Sign our Guestbook",
   collection_description: "Leave your mark with a scribble",
   show_message_field: true,

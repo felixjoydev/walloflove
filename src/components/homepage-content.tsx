@@ -61,7 +61,7 @@ export function HomepageContent({ copyId = "a" }: { copyId?: string }) {
           Again
         </h1>
         <p className="mt-6 text-text-secondary text-[18px] leading-relaxed max-w-[420px] mx-auto">
-          A place for your visitors to express their love
+          A hand-drawn guestbook for your website. Visitors draw, sign, doodle — each mark lands on a wall that feels unmistakably alive.
         </p>
         <div className="mt-8">
           <CreativeGuestbookButton />

@@ -74,6 +74,8 @@ export function PreviewEditor({
   const [publishing, setPublishing] = useState(false);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => { setIsMobile(window.innerWidth < 1024); }, []);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://guestbook.cv";
   const isPublished = !!guestbook.slug;
@@ -193,6 +195,7 @@ export function PreviewEditor({
   const hasActiveHighlight = activeZones !== null && activeZones.length > 0;
 
   function hlWrap(field: string, hoverOnly = false) {
+    if (isMobile) return {};
     const base = {
       onMouseEnter: () => setHoveredField(field),
       onMouseLeave: () => setHoveredField(null),
