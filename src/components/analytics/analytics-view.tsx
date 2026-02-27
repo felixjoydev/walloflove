@@ -1,29 +1,41 @@
 "use client";
 
-import { useState } from "react";
-import { StatsCards } from "./stats-cards";
+import { useState, useMemo } from "react";
 import { AnalyticsChart } from "./analytics-chart";
 import { Card } from "@/components/ui/card";
-
-interface Summary {
-  page_views: number;
-  submissions: number;
-  unique_visitors: number;
-  top_countries: { country: string; count: number }[];
-  top_referrers: { referrer: string; count: number }[];
-}
 
 interface TimeSeriesPoint {
   date: string;
   count: number;
 }
 
+interface MultiTimeSeries {
+  page_views: TimeSeriesPoint[];
+  submissions: TimeSeriesPoint[];
+  unique_visitors: TimeSeriesPoint[];
+}
+
+interface Summary {
+  top_countries: { country: string; count: number }[];
+  top_referrers: { referrer: string; count: number }[];
+}
+
 interface AnalyticsData {
   summary: Summary;
-  timeSeries: TimeSeriesPoint[];
+  series: MultiTimeSeries;
+  hourlySeries: MultiTimeSeries;
 }
 
 type AnalyticsTab = "wall" | "collection" | "widget";
+
+function filterByRange(data: TimeSeriesPoint[], days: number): TimeSeriesPoint[] {
+  if (days >= data.length) return data;
+  return data.slice(-days);
+}
+
+function sumCounts(data: TimeSeriesPoint[]): number {
+  return data.reduce((sum, p) => sum + p.count, 0);
+}
 
 export function AnalyticsView({
   wall,
@@ -45,7 +57,18 @@ export function AnalyticsView({
     { label: "Widget", value: "widget", disabled: true },
   ];
 
-  const isEmpty = data.summary.page_views === 0 && data.summary.submissions === 0;
+  // Filter series by selected time range (use hourly data for "Today")
+  const isToday = timeRange === 1;
+  const filteredViews = useMemo(() => isToday ? data.hourlySeries.page_views : filterByRange(data.series.page_views, timeRange), [data.hourlySeries.page_views, data.series.page_views, timeRange, isToday]);
+  const filteredSubmissions = useMemo(() => isToday ? data.hourlySeries.submissions : filterByRange(data.series.submissions, timeRange), [data.hourlySeries.submissions, data.series.submissions, timeRange, isToday]);
+  const filteredVisitors = useMemo(() => isToday ? data.hourlySeries.unique_visitors : filterByRange(data.series.unique_visitors, timeRange), [data.hourlySeries.unique_visitors, data.series.unique_visitors, timeRange, isToday]);
+
+  // Compute stats from filtered series
+  const pageViews = sumCounts(filteredViews);
+  const submissions = sumCounts(filteredSubmissions);
+  const uniqueVisitors = sumCounts(filteredVisitors);
+
+  const isEmpty = pageViews === 0 && submissions === 0;
 
   return (
     <div>
@@ -75,18 +98,16 @@ export function AnalyticsView({
         ))}
       </div>
 
-      <div className="mt-6 space-y-6">
-        <StatsCards
-          pageViews={data.summary.page_views}
-          submissions={data.summary.submissions}
-          uniqueVisitors={data.summary.unique_visitors}
-          tab={tab}
-        />
-
+      <div className="mt-8 space-y-6">
         <AnalyticsChart
-          data={data.timeSeries}
+          pageViews={filteredViews}
+          submissions={filteredSubmissions}
+          uniqueVisitors={filteredVisitors}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
+          totalPageViews={pageViews}
+          totalSubmissions={submissions}
+          totalUniqueVisitors={uniqueVisitors}
         />
 
         {data.summary.top_countries.length > 0 && (

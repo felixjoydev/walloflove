@@ -56,7 +56,6 @@ export function PreviewEditor({
   const guestbook = useGuestbookContext();
   const [settings, setSettings] = useState<Required<GuestbookSettings>>(guestbook.settings);
   const lastSavedRef = useRef<Required<GuestbookSettings>>(guestbook.settings);
-  const publishedSettingsRef = useRef<Required<GuestbookSettings>>(guestbook.settings);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tab, setTab] = useState<PreviewTab>("wall");
   const [showEmbed, setShowEmbed] = useState(false);
@@ -73,7 +72,7 @@ export function PreviewEditor({
 
   const currentUrl = tab === "collection" ? collectUrl : wallUrl;
 
-  const hasUnpublishedChanges = JSON.stringify(settings) !== JSON.stringify(publishedSettingsRef.current);
+  const hasUnpublishedChanges = JSON.stringify(settings) !== JSON.stringify(guestbook.publishedSettings);
 
   function update<K extends keyof GuestbookSettings>(key: K, value: GuestbookSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -85,11 +84,16 @@ export function PreviewEditor({
 
     debounceRef.current = setTimeout(async () => {
       if (JSON.stringify(settings) === JSON.stringify(lastSavedRef.current)) return;
-      const result = await saveThemeAction(guestbookId, settings);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        lastSavedRef.current = settings;
+      try {
+        const result = await saveThemeAction(guestbookId, settings);
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          lastSavedRef.current = settings;
+          guestbook.updateSettings(settings);
+        }
+      } catch {
+        toast.error("Failed to save");
       }
     }, 800);
 
@@ -115,6 +119,7 @@ export function PreviewEditor({
         return;
       }
       lastSavedRef.current = settings;
+      guestbook.updateSettings(settings);
     }
 
     const result = await publishAction(guestbookId);
@@ -122,7 +127,7 @@ export function PreviewEditor({
       toast.error(result.error);
     } else {
       toast.success("Published!");
-      publishedSettingsRef.current = settings;
+      guestbook.markPublished();
       if (!isPublished) {
         router.refresh();
       }

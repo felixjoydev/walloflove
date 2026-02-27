@@ -19,6 +19,7 @@ export interface Database {
           name: string;
           slug: string | null;
           settings: Json;
+          draft_settings: Json | null;
           custom_domain: string | null;
           domain_verified: boolean;
           domain_vercel_status: string;
@@ -32,6 +33,7 @@ export interface Database {
           name: string;
           slug?: string | null;
           settings?: Json;
+          draft_settings?: Json | null;
           custom_domain?: string | null;
           domain_verified?: boolean;
           domain_vercel_status?: string;
@@ -45,6 +47,7 @@ export interface Database {
           name?: string;
           slug?: string | null;
           settings?: Json;
+          draft_settings?: Json | null;
           custom_domain?: string | null;
           domain_verified?: boolean;
           domain_vercel_status?: string;

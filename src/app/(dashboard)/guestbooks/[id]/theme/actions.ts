@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   getGuestbook,
-  updateGuestbookSettings,
+  updateDraftSettings,
+  publishDraftSettings,
   updateGuestbookSlug,
 } from "@/lib/repositories/guestbook.repo";
 import { generateUniqueSlug } from "@/lib/utils/slug";
@@ -64,7 +65,7 @@ export async function saveThemeAction(
   }
 
   try {
-    await updateGuestbookSettings(supabase, guestbookId, theme);
+    await updateDraftSettings(supabase, guestbookId, theme as Record<string, unknown>);
     return { error: null };
   } catch (err: unknown) {
     const message =
@@ -167,6 +168,9 @@ export async function publishAction(guestbookId: string) {
       slug = await generateUniqueSlug(supabase, guestbook.name);
       await updateGuestbookSlug(supabase, guestbookId, slug);
     }
+
+    // Copy draft_settings → settings and clear draft
+    await publishDraftSettings(supabase, guestbookId);
 
     revalidatePath(`/wall/${slug}`);
     revalidatePath(`/collect/${slug}`);

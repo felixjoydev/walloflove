@@ -96,23 +96,29 @@ export async function getAnalyticsSummary(
   };
 }
 
-interface TimeSeriesPoint {
+export interface TimeSeriesPoint {
   date: string;
   count: number;
 }
 
-export async function getAnalyticsTimeSeries(
+export interface MultiTimeSeries {
+  page_views: TimeSeriesPoint[];
+  submissions: TimeSeriesPoint[];
+  unique_visitors: TimeSeriesPoint[];
+}
+
+export async function getAnalyticsMultiTimeSeries(
   supabase: TypedSupabaseClient,
   guestbookId: string,
   pageType: string,
   days: number = 30
-): Promise<TimeSeriesPoint[]> {
+): Promise<MultiTimeSeries> {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
   const { data: events, error } = await supabase
     .from("analytics_events")
-    .select("created_at")
+    .select("event_type, visitor_hash, created_at")
     .eq("guestbook_id", guestbookId)
     .eq("page_type", pageType)
     .gte("created_at", since.toISOString())
@@ -120,22 +126,87 @@ export async function getAnalyticsTimeSeries(
 
   if (error) throw error;
 
-  // Group by date
-  const dateCounts = new Map<string, number>();
+  const viewCounts = new Map<string, number>();
+  const submissionCounts = new Map<string, number>();
+  const dailyVisitors = new Map<string, Set<string>>();
+
   for (const event of events ?? []) {
     const date = event.created_at.split("T")[0];
-    dateCounts.set(date, (dateCounts.get(date) ?? 0) + 1);
+    if (event.event_type === "page_view" || event.event_type === "widget_load") {
+      viewCounts.set(date, (viewCounts.get(date) ?? 0) + 1);
+    } else if (event.event_type === "submission") {
+      submissionCounts.set(date, (submissionCounts.get(date) ?? 0) + 1);
+    }
+    if (event.visitor_hash) {
+      if (!dailyVisitors.has(date)) dailyVisitors.set(date, new Set());
+      dailyVisitors.get(date)!.add(event.visitor_hash);
+    }
   }
 
-  // Fill in missing dates
-  const result: TimeSeriesPoint[] = [];
+  // Fill in missing dates for all three series
+  const page_views: TimeSeriesPoint[] = [];
+  const submissions: TimeSeriesPoint[] = [];
+  const unique_visitors: TimeSeriesPoint[] = [];
   const current = new Date(since);
   const today = new Date();
   while (current <= today) {
     const dateStr = current.toISOString().split("T")[0];
-    result.push({ date: dateStr, count: dateCounts.get(dateStr) ?? 0 });
+    page_views.push({ date: dateStr, count: viewCounts.get(dateStr) ?? 0 });
+    submissions.push({ date: dateStr, count: submissionCounts.get(dateStr) ?? 0 });
+    unique_visitors.push({ date: dateStr, count: dailyVisitors.get(dateStr)?.size ?? 0 });
     current.setDate(current.getDate() + 1);
   }
 
-  return result;
+  return { page_views, submissions, unique_visitors };
+}
+
+export async function getAnalyticsHourlySeries(
+  supabase: TypedSupabaseClient,
+  guestbookId: string,
+  pageType: string
+): Promise<MultiTimeSeries> {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const { data: events, error } = await supabase
+    .from("analytics_events")
+    .select("event_type, visitor_hash, created_at")
+    .eq("guestbook_id", guestbookId)
+    .eq("page_type", pageType)
+    .gte("created_at", todayStart.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  const viewCounts = new Map<number, number>();
+  const submissionCounts = new Map<number, number>();
+  const hourlyVisitors = new Map<number, Set<string>>();
+
+  for (const event of events ?? []) {
+    const hour = new Date(event.created_at).getHours();
+    if (event.event_type === "page_view" || event.event_type === "widget_load") {
+      viewCounts.set(hour, (viewCounts.get(hour) ?? 0) + 1);
+    } else if (event.event_type === "submission") {
+      submissionCounts.set(hour, (submissionCounts.get(hour) ?? 0) + 1);
+    }
+    if (event.visitor_hash) {
+      if (!hourlyVisitors.has(hour)) hourlyVisitors.set(hour, new Set());
+      hourlyVisitors.get(hour)!.add(event.visitor_hash);
+    }
+  }
+
+  const currentHour = now.getHours();
+  const page_views: TimeSeriesPoint[] = [];
+  const submissions: TimeSeriesPoint[] = [];
+  const unique_visitors: TimeSeriesPoint[] = [];
+
+  for (let h = 0; h <= currentHour; h++) {
+    const date = String(h);
+    page_views.push({ date, count: viewCounts.get(h) ?? 0 });
+    submissions.push({ date, count: submissionCounts.get(h) ?? 0 });
+    unique_visitors.push({ date, count: hourlyVisitors.get(h)?.size ?? 0 });
+  }
+
+  return { page_views, submissions, unique_visitors };
 }

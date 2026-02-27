@@ -133,7 +133,7 @@ export function SettingsForm() {
 
             <SettingsRadioField
               label="Moderation mode"
-              description="Explain about moderation"
+              description="Choose how new entries appear on your wall. Manual requires your approval before entries go live. Auto Approve publishes them instantly."
               value={settings.moderation_mode}
               onChange={(v) => update("moderation_mode", v as "auto_approve" | "manual_approve")}
               options={[

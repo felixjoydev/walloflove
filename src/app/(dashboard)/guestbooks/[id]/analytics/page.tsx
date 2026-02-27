@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   getAnalyticsSummary,
-  getAnalyticsTimeSeries,
+  getAnalyticsMultiTimeSeries,
+  getAnalyticsHourlySeries,
 } from "@/lib/repositories/analytics.repo";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 
@@ -13,21 +14,24 @@ export default async function AnalyticsPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [wallSummary, collectionSummary, widgetSummary, wallTimeSeries, collectionTimeSeries, widgetTimeSeries] =
+  const [wallSummary, collectionSummary, widgetSummary, wallSeries, collectionSeries, widgetSeries, wallHourly, collectionHourly, widgetHourly] =
     await Promise.all([
       getAnalyticsSummary(supabase, id, "wall"),
       getAnalyticsSummary(supabase, id, "collection"),
       getAnalyticsSummary(supabase, id, "widget"),
-      getAnalyticsTimeSeries(supabase, id, "wall"),
-      getAnalyticsTimeSeries(supabase, id, "collection"),
-      getAnalyticsTimeSeries(supabase, id, "widget"),
+      getAnalyticsMultiTimeSeries(supabase, id, "wall"),
+      getAnalyticsMultiTimeSeries(supabase, id, "collection"),
+      getAnalyticsMultiTimeSeries(supabase, id, "widget"),
+      getAnalyticsHourlySeries(supabase, id, "wall"),
+      getAnalyticsHourlySeries(supabase, id, "collection"),
+      getAnalyticsHourlySeries(supabase, id, "widget"),
     ]);
 
   return (
     <AnalyticsView
-      wall={{ summary: wallSummary, timeSeries: wallTimeSeries }}
-      collection={{ summary: collectionSummary, timeSeries: collectionTimeSeries }}
-      widget={{ summary: widgetSummary, timeSeries: widgetTimeSeries }}
+      wall={{ summary: wallSummary, series: wallSeries, hourlySeries: wallHourly }}
+      collection={{ summary: collectionSummary, series: collectionSeries, hourlySeries: collectionHourly }}
+      widget={{ summary: widgetSummary, series: widgetSeries, hourlySeries: widgetHourly }}
     />
   );
 }

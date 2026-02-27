@@ -97,15 +97,61 @@ export async function updateGuestbookSettings(
   id: string,
   settings: Partial<GuestbookSettings>
 ) {
+  // Fetch existing settings so partial updates merge instead of replacing
+  const { data: existing } = await supabase
+    .from("guestbooks")
+    .select("settings")
+    .eq("id", id)
+    .single();
+
+  const merged = {
+    ...((existing?.settings as Record<string, unknown>) ?? {}),
+    ...(settings as Record<string, unknown>),
+  };
+
   const { data, error } = await supabase
     .from("guestbooks")
-    .update({ settings: settings as Record<string, unknown> })
+    .update({ settings: merged })
     .eq("id", id)
     .select("settings")
     .single();
 
   if (error) throw error;
   return data?.settings;
+}
+
+/** Write draft theme settings (auto-save target). Full replacement, no merge. */
+export async function updateDraftSettings(
+  supabase: TypedSupabaseClient,
+  id: string,
+  draftSettings: Record<string, unknown>
+) {
+  const { error } = await supabase
+    .from("guestbooks")
+    .update({ draft_settings: draftSettings })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/** Copy draft_settings → settings, clear draft_settings. */
+export async function publishDraftSettings(
+  supabase: TypedSupabaseClient,
+  id: string
+) {
+  const { data, error: fetchErr } = await supabase
+    .from("guestbooks")
+    .select("draft_settings, settings")
+    .eq("id", id)
+    .single();
+  if (fetchErr) throw fetchErr;
+
+  const toPublish = data.draft_settings ?? data.settings;
+
+  const { error } = await supabase
+    .from("guestbooks")
+    .update({ settings: toPublish, draft_settings: null })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function updateGuestbookName(

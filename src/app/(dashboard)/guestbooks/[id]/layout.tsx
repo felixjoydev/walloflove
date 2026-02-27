@@ -29,6 +29,9 @@ export default async function GuestbookLayout({
         name: guestbook.name,
         slug: guestbook.slug,
         settings: mergeSettings(
+          (guestbook.draft_settings ?? guestbook.settings) as Partial<GuestbookSettings> | null
+        ),
+        publishedSettings: mergeSettings(
           guestbook.settings as Partial<GuestbookSettings> | null
         ),
         customDomain: guestbook.custom_domain,
